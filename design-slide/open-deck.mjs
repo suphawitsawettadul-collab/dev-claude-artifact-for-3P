@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
+import vm from 'node:vm';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -27,6 +28,7 @@ const withStyle = (tag, style) => /\sstyle="/.test(tag) ? tag.replace(/\sstyle="
 const dropProps = (style, names) => style.split(';').filter(d => d.trim() && !names.includes(d.split(':')[0].trim().toLowerCase())).join(';');
 const propOf = (style, name) => { const d = style.split(';').find(x => x.split(':')[0].trim().toLowerCase() === name); return d ? d.slice(d.indexOf(':') + 1).trim() : ''; };
 
+const ICONS = (() => { const w = {}; try { vm.runInNewContext(fs.readFileSync(path.join(toolDir, 'icons.js'), 'utf8'), { window: w }); } catch {} return w.DECK_ICONS || {}; })();
 const CLIP = {
   diamond: 'polygon(50% 0,100% 50%,50% 100%,0 50%)',
   'arrow-right': 'polygon(0 25%,60% 25%,60% 0,100% 50%,60% 100%,60% 75%,0 75%)',
@@ -46,20 +48,22 @@ function convertElements(html, id) {
     if (CLIP[kind]) style += `;clip-path:${CLIP[kind]}`;
     if (kind === 'line') {
       const col = propOf(style, 'color') || propOf(style, 'background') || propOf(style, 'background-color') || '#888888';
-      style = dropProps(style, ['background', 'background-color']) + `;height:0;border-top:4px solid ${col}`;
+      style = dropProps(style, ['background', 'background-color', 'height']) + `;height:4px;background:${col}`;
     }
     return `<div data-shape="${esc(kind)}" style="${style.replace(/^;/, '')}"></div>`;
   });
   html = html.replace(/<x-icon\b([^>]*?)\/?>(?:\s*<\/x-icon>)?/g, (m, attrs) => {
     const name = (attrs.match(/name="([^"]*)"/) || [, 'icon'])[1];
-    warn.push(`${id}: <x-icon name="${name}"> shown as a dot (Design Slide has no icon set yet)`);
-    return `<span data-icon="${esc(name)}" aria-label="${esc(name)}" style="display:inline-block;width:1em;height:1em;border-radius:50%;background:currentColor;vertical-align:middle"></span>`;
+    let style = getStyle(`<x ${attrs}>`);
+    if (!ICONS[name]) { warn.push(`${id}: <x-icon name="${name}"> is not in the icon set, shown as a dot`); return `<span data-icon="${esc(name)}" style="display:inline-block;width:1em;height:1em;border-radius:50%;background:currentColor;vertical-align:middle"></span>`; }
+    if (!/width\s*:/.test(style)) style += ';width:96px;height:96px';
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="${esc(name)}" aria-label="${esc(name)}" style="${style.replace(/^;/, '')}">${ICONS[name]}</svg>`;
   });
   html = html.replace(/<x-(connector|embed)\b[\s\S]*?(<\/x-\1>|\/>|>)/g, (m, t) => { warn.push(`${id}: <x-${t}> is not supported and was left out`); return ''; });
   return html;
 }
 
-function convertSection(raw, id) {
+function convertSection(raw, id, section) {
   const open = raw.match(/<section\b[^>]*>/);
   const end = raw.lastIndexOf('</section>');
   if (!open || end < 0) throw new Error(`slides/${id}.html has no <section>`);
@@ -78,7 +82,7 @@ function convertSection(raw, id) {
     inner = `<div style="display:grid;flex:1;${grid}">${inner}</div>`;
   }
   const cls = 'slide';
-  const attrs = [`class="${cls}"`, `id="${esc(id)}"`, ...[...tag.matchAll(/\s(data-[a-z-]+)="([^"]*)"/g)].map(m => `${m[1]}="${esc(m[2])}"`), `style="${kept}"`];
+  const attrs = [`class="${cls}"`, `id="${esc(id)}"`, ...(section !== undefined ? [`data-section="${esc(section)}"`] : []), ...[...tag.matchAll(/\s(data-[a-z-]+)="([^"]*)"/g)].map(m => `${m[1]}="${esc(m[2])}"`), `style="${kept}"`];
   if (!/position\s*:/.test(kept)) { /* editor.css sets position:relative on .slide */ }
   return `<section ${attrs.join(' ')}>${inner.trim()}${notes ? `<aside class="notes" hidden>${notes}</aside>` : ''}</section>`;
 }
@@ -98,7 +102,8 @@ function build() {
   const { deck, order, dir } = readDeck();
   const ds = opt('ds');
   const faces = Object.values(deck.faces || {}).filter(f => f.href).map(f => `<link rel="stylesheet" href="${esc(f.href)}">`).join('\n');
-  const slides = order.map(id => convertSection(fs.readFileSync(path.join(dir, id + '.html'), 'utf8'), id));
+  const starts = Object.fromEntries(Object.values(deck.sections || {}).filter(x => x.start).map(x => [x.start, x.description || '']));
+  const slides = order.map(id => convertSection(fs.readFileSync(path.join(dir, id + '.html'), 'utf8'), id, starts[id]));
   const html = `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">

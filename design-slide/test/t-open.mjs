@@ -18,6 +18,8 @@ try {
   const html = fs.readFileSync(path.join(dir, 'deck.html'), 'utf8');
   ok((html.match(/<section class="slide"/g) || []).length === 3 && html.includes('<title>Quarterly review</title>'), 'one slide per file, title from deck.json');
   ok(html.includes('class="notes" hidden>Open with the one-line summary.') && !html.includes('<x-shape'), 'aside becomes speaker notes, x-shape becomes a box');
+  ok(!html.includes('<x-icon') && /<svg [^>]*data-icon="check"/.test(html), 'x-icon becomes an inline svg from the icon set');
+  ok(html.includes('id="cover" data-section="Where we stand"'), 'sections from deck.json become data-section on their first slide');
   const b = await start(`http://localhost:${port}/deck.html#1`);
   ok(await b.ev(`document.querySelectorAll('#ed-thumbs .ed-thumb').length`) === 3, 'filmstrip shows 3 slides');
   ok(await b.ev(`DeckEditor && document.querySelector('.slide.active').offsetWidth`) === 1920, 'slides are 1920 wide');

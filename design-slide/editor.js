@@ -14,6 +14,27 @@
   const COLORS = DS?.colors || BASIC_COLORS;
   const DEF = DS?.defaults || { fill: '#dbe7f5', line: '#0057a8', text: '#1d2433' };
   const BLANK = '<h2 data-edit="">New slide title</h2><p data-edit="">Type your text here</p>';
+  // New-slide layouts when there is no design system: sizes are written for a 1280-wide slide and scaled by U later.
+  const GEN_LAYOUTS = (() => {
+    const h = (t, sz = 56, extra = '') => `<h2 data-edit="" style="font-size:%${sz}px;font-weight:700;line-height:1.1;${extra}">${t}</h2>`;
+    const p = (t, sz = 28, extra = '') => `<p data-edit="" style="font-size:%${sz}px;line-height:1.4;${extra}">${t}</p>`;
+    const card = inner => `<div style="background:rgba(127,127,127,.14);border-radius:%16px;padding:%28px;display:flex;flex-direction:column;gap:%8px">${inner}</div>`;
+    const L = (name, html, st = '') => ({ name, html, st });
+    return {
+      title: L('Title', h('Presentation title', 72) + p('Subtitle or date', 32, 'opacity:.75'), 'justify-content:flex-end'),
+      section: L('Section', p('01', 32, 'opacity:.6') + h('Section title', 72), 'justify-content:center'),
+      titlebody: L('Title + body', h('Slide title') + p('Write your message here. One idea per slide.', 32)),
+      keypoints: L('Key points', h('Key points') + `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:%24px;margin-top:auto">${[1, 2, 3].map(n => card(`<b data-edit="" style="font-size:%56px">${n}0</b><span data-edit="" style="font-size:%24px">Label</span>`)).join('')}</div>`),
+      compare: L('Compare', h('Compare') + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:%32px">${['Option A', 'Option B'].map(t => card(`<h3 data-edit="" style="font-size:%36px">${t}</h3>` + p('Describe it', 26))).join('')}</div>`),
+      bullets: L('Bullets', h('Bullets') + `<ul data-edit="" style="font-size:%32px;line-height:1.5;padding-left:1.2em"><li>First point</li><li>Second point</li><li>Third point</li></ul>`),
+      twocol: L('Two columns', h('Two columns') + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:%48px">${p('Left column text', 28)}${p('Right column text', 28)}</div>`),
+      table: L('Table', h('Table') + `<table style="border-collapse:collapse;font-size:%24px;width:100%"><tbody>${[0, 1, 2].map(r => '<tr>' + [1, 2, 3].map(c => `<${r ? 'td' : 'th'} data-edit="" style="padding:%12px %16px;text-align:left;border-bottom:1px solid rgba(127,127,127,.4);${r ? '' : 'font-weight:700;'}">${r ? '' : 'Column ' + c}</${r ? 'td' : 'th'}>`).join('') + '</tr>').join('')}</tbody></table>`),
+      quote: L('Quote', p('\u201CA short quote that carries the point.\u201D', 56, 'font-weight:600;line-height:1.25') + p('Name, role', 28, 'opacity:.7'), 'justify-content:center'),
+      imagecap: L('Image + caption', `<div style="flex:1;border-radius:%16px;background:rgba(127,127,127,.18);display:grid;place-items:center;font-size:%28px;opacity:.7">Image</div>` + p('Caption', 26)),
+      closing: L('Closing', h('Thank you', 80) + p('Questions?', 32, 'opacity:.75'), 'justify-content:center'),
+    };
+  })();
+  const layoutHtml = (html, u) => html.replace(/%(-?[0-9.]+)px/g, (m, n) => `${Math.round(n * u * 10) / 10}px`);
 
   // Design system styles and fonts are injected each load (marked data-chrome, so a save never copies them into the deck).
   if (DS) {
@@ -130,10 +151,8 @@
   if (pref('strip-h')) root.style.setProperty('--strip-h', pref('strip-h') + 'px');
   const ic = (n, s = 18) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${P[n]}</svg>`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const layouts = DS?.layouts ? Object.entries(DS.layouts) : [];
-  const addItems = layouts.length
-    ? `<div class="lbl">${esc(DS.name)}</div>` + layouts.map(([k, l]) => `<button data-add="${k}">${esc(l.name)}</button>`).join('') + '<button data-add="">Blank</button>'
-    : '<button data-add="">Blank slide</button>';
+  const LAYOUTS = DS?.layouts ? Object.fromEntries(Object.entries(DS.layouts).map(([k, l]) => [k, { name: l.name, html: l.html, ds: true }])) : GEN_LAYOUTS;
+  const addItems = '<div class="gal-grid"></div>'; // cards are built when the menu opens (they are scaled copies of the layouts)
 
   document.body.insertAdjacentHTML('afterbegin', `
     <header id="ed-head" data-chrome>
@@ -156,9 +175,13 @@
       <button data-cmd="table" title="Table">${ic('table')}</button>
       <div class="ed-menu"><button data-menu title="Shapes">${ic('shapes')}${ic('chevron', 14)}</button>
         <div class="items">
-          <button data-cmd="rect">Rectangle</button><button data-cmd="round">Rounded rectangle</button>
-          <button data-cmd="ellipse">Ellipse</button><button data-cmd="line">Line</button>
+          <button data-cmd="rect">Rectangle <kbd>R</kbd></button><button data-cmd="round">Rounded rectangle <kbd>Shift+R</kbd></button>
+          <button data-cmd="ellipse">Ellipse <kbd>O</kbd></button><button data-cmd="diamond">Diamond <kbd>D</kbd></button>
+          <button data-cmd="arrow-right">Arrow right</button><button data-cmd="arrow-left">Arrow left</button><button data-cmd="arrow-up">Arrow up</button><button data-cmd="arrow-down">Arrow down</button>
+          <button data-cmd="line">Line <kbd>L</kbd></button><button data-cmd="connector">Connector <kbd>Shift+L</kbd></button>
         </div></div>
+      <div class="ed-menu" id="ed-icons-menu"><button data-menu title="Icons">${ic('star')}${ic('chevron', 14)}</button>
+        <div class="items icons"><div class="icon-grid"></div></div></div>
     </div>
     <div id="ed-tools-r" class="ed-group" data-chrome>
       <div class="ed-menu"><button data-menu id="ed-dl" title="Download">${ic('download')}</button>
@@ -179,7 +202,7 @@
     <footer id="ed-strip" data-chrome>
       <div id="ed-resize" title="Drag to resize"></div>
       <div class="bar">
-        <div class="ed-menu"><button data-menu title="New slide">${ic('plus')}</button><div class="items up">${addItems}</div></div>
+        <div class="ed-menu" id="ed-add"><button data-menu title="New slide">${ic('plus')}</button><div class="items up gal"><div class="lbl">${esc(DS ? DS.name : 'New slide')}</div>${addItems}</div></div>
         <button data-cmd="notes" title="Show speaker notes">${ic('notes')}</button>
         <span class="grow"></span>
         <div class="ed-seg"><button data-view="single" title="Single slide">${ic('single', 16)}</button><button data-view="grid" title="Grid view">${ic('grid', 16)}</button></div>
@@ -211,8 +234,9 @@
     all.forEach((el, k) => el.classList.toggle('active', k === i));
     if (!presenting()) history.replaceState(null, '', '#' + (i + 1));
     $('ed-pos').textContent = `${i + 1} / ${all.length}`;
-    [$('ed-thumbs'), $('ed-grid')].forEach(box => [...box.children].forEach((t, k) => t.classList.toggle('active', k === i)));
-    $('ed-thumbs').children[i]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    [$('ed-thumbs'), $('ed-grid')].forEach(box => [...box.querySelectorAll('.ed-thumb')].forEach((t, k) => t.classList.toggle('active', k === i)));
+    if (tpick.size) { tpick.clear(); markPicked(); }
+    $('ed-thumbs').querySelectorAll('.ed-thumb')[i]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     $('ed-notes').value = all[i]?.querySelector(':scope > aside.notes')?.textContent || '';
     select(null);
   }
@@ -236,18 +260,31 @@
 
   // Thumbnails (filmstrip, and grid view when open) are scaled clones of the live slides, rebuilt after edits.
   let dragFrom = -1;
+  const tpick = new Set(); // slides picked in the strip with Ctrl / Shift click (empty = just the current one)
+  const markPicked = () => { [$('ed-thumbs'), $('ed-grid')].forEach(box => [...box.querySelectorAll('.ed-thumb')].forEach((t, k) => t.classList.toggle('picked', tpick.has(slides()[k])))); };
   function thumbsInto(box, tw) {
     box.innerHTML = '';
     slides().forEach((s, k) => {
       const t = document.createElement('div');
-      t.className = 'ed-thumb' + (k === i ? ' active' : '');
+      if (box.id === 'ed-grid' && s.dataset.section !== undefined) {
+        const hd = document.createElement('div'); hd.className = 'ed-sechead'; hd.textContent = s.dataset.section || ('Section ' + (k + 1)); box.appendChild(hd);
+      }
+      t.className = 'ed-thumb' + (k === i ? ' active' : '') + (s.hasAttribute('data-skip') ? ' skip' : '') + (tpick.has(s) ? ' picked' : '');
       t.style.width = tw + 4 + 'px'; t.style.height = tw * H / W + 4 + 'px';
       t.draggable = true;
-      t.innerHTML = `<span class="num">${k + 1}</span><div class="tools"><button data-act="dup" title="Duplicate (Ctrl+D)">${ic('copy', 13)}</button><button data-act="del" title="Delete">${ic('trash', 13)}</button></div>`;
+      t.innerHTML = `<span class="num">${k + 1}</span><div class="tools"><button data-act="menu" title="Slide menu">${ic('more', 13)}</button><button data-act="dup" title="Duplicate (Ctrl+D)">${ic('copy', 13)}</button><button data-act="del" title="Delete">${ic('trash', 13)}</button></div>`;
       const c = cleanClone(s, true); // thumbnails keep the shrunk look of the live slide
       c.style.zoom = tw / W;
       t.appendChild(c);
-      t.onclick = e => { const act = e.target.closest('[data-act]')?.dataset.act; if (act) return manage(act, k); show(k); if (box.id === 'ed-grid') setView('single'); };
+      t.oncontextmenu = e => { e.preventDefault(); slideMenu(e.clientX, e.clientY, k); };
+      t.onclick = e => {
+        const act = e.target.closest('[data-act]')?.dataset.act;
+        if (act === 'menu') { const r = e.target.closest('button').getBoundingClientRect(); return slideMenu(r.left, r.bottom, k); }
+        if (act) return manage(act, k);
+        if (e.ctrlKey || e.metaKey) { tpick.has(s) ? tpick.delete(s) : tpick.add(s); if (!tpick.size) tpick.add(slides()[i]); return markPicked(); }
+        if (e.shiftKey) { const a = Math.min(i, k), b = Math.max(i, k); tpick.clear(); slides().slice(a, b + 1).forEach(x => tpick.add(x)); return markPicked(); }
+        tpick.clear(); markPicked(); show(k); if (box.id === 'ed-grid') setView('single');
+      };
       t.ondragstart = () => { dragFrom = k; t.classList.add('dragging'); };
       t.ondragend = () => t.classList.remove('dragging');
       t.ondragover = e => { e.preventDefault(); t.classList.add('drop'); };
@@ -290,17 +327,89 @@
       status(`Slide ${k + 1} deleted (not saved yet)`);
     }
   }
+  function applyLook(s, L) { // without a design system a new slide takes background, text colour, font and margins from the slide you are on
+    const cur = slides()[i];
+    if (DS) return;
+    if (cur) {
+      const cs = cur.style, keep = ['background', 'background-color', 'color', 'font-family', 'padding', 'gap'].filter(pn => cs.getPropertyValue(pn));
+      keep.forEach(pn => s.style.setProperty(pn, cs.getPropertyValue(pn)));
+      if (!keep.some(pn => pn.startsWith('padding'))) s.style.padding = `${Math.round(72 * U)}px ${Math.round(88 * U)}px`;
+    } else s.style.padding = `${Math.round(72 * U)}px ${Math.round(88 * U)}px`;
+    if (L?.st) L.st.split(';').filter(Boolean).forEach(d => s.style.setProperty(d.split(':')[0], d.split(':')[1]));
+  }
+  async function buildIcons() {
+    const g = document.querySelector('#ed-icons-menu .icon-grid');
+    try { if (!window.DECK_ICONS) await load('icons.js'); } catch (e) { return status('Icons not available: ' + e.message); }
+    g.innerHTML = Object.entries(window.DECK_ICONS).map(([n, d]) => `<button data-icon="${n}" title="${n}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg></button>`).join('');
+  }
+  function buildGallery() { // "+" menu: a card per layout with a scaled preview
+    const g = document.querySelector('#ed-add .gal-grid'), pw = 156;
+    g.innerHTML = '';
+    [['', { name: 'Blank', html: '' }], ...Object.entries(LAYOUTS)].forEach(([key, L]) => {
+      const b = document.createElement('button'); b.className = 'gcard'; b.dataset.add = key;
+      const pv = document.createElement('div'); pv.className = 'gprev'; pv.style.width = pw + 'px'; pv.style.height = Math.round(pw * H / W) + 'px';
+      const sl = document.createElement('section'); sl.className = 'slide';
+      sl.innerHTML = key ? (L.ds ? L.html.trim() : layoutHtml(L.html, U)) : ''; if (key && DS) sl.dataset.layout = key;
+      applyLook(sl, key ? L : null);
+      sl.style.zoom = pw / W;
+      pv.appendChild(sl); b.append(pv, Object.assign(document.createElement('span'), { textContent: L.name }));
+      g.appendChild(b);
+    });
+  }
+  // --- slide menu: the filmstrip "..." button and right-click on a thumbnail; works on the slides picked with Ctrl / Shift click ---
+  const targetSlides = k => { const s = slides()[k]; return tpick.has(s) && tpick.size > 1 ? slides().filter(x => tpick.has(x)) : [s]; };
+  function slideMenu(x, y, k) {
+    const set = targetSlides(k), all = slides(), multi = set.length > 1, skipped = set.every(sl => sl.hasAttribute('data-skip'));
+    const rows = [['dup', multi ? 'Duplicate slides' : 'Duplicate slide'], ['skip', skipped ? 'Include in presentation' : 'Skip slide'], ['add', 'Add slide after'], null,
+      ['left', 'Move left', k > 0 && !multi], ['right', 'Move right', k < all.length - 1 && !multi], null, ['del', multi ? 'Delete slides' : 'Delete slide', set.length < all.length]];
+    const m = $('ed-ctx');
+    m.innerHTML = rows.map(r => r ? `<button data-sctx="${r[0]}" data-k="${k}"${r[2] === false ? ' disabled' : ''}><span>${r[1]}</span></button>` : '<hr>').join('');
+    m.style.display = 'block';
+    m.style.left = Math.max(4, Math.min(x, innerWidth - m.offsetWidth - 4)) + 'px';
+    m.style.top = Math.max(4, Math.min(y, innerHeight - m.offsetHeight - 4)) + 'px';
+  }
+  function slideAct(act, k) {
+    const all = slides(), set = targetSlides(k);
+    if (act === 'dup') { record(); let first; set.forEach(sl => { const c = cleanClone(sl); sl.after(c); first ??= c; }); tpick.clear(); afterChange(slides().indexOf(first)); }
+    else if (act === 'skip') {
+      record(); const was = set.every(sl => sl.hasAttribute('data-skip'));
+      set.forEach(sl => was ? sl.removeAttribute('data-skip') : sl.setAttribute('data-skip', ''));
+      markDirty(); buildThumbs(); status(was ? 'Slide included again' : 'Slide skipped in the presentation and exports');
+    }
+    else if (act === 'add') { show(k); addSlide(''); }
+    else if (act === 'left') move(k, k - 1);
+    else if (act === 'right') move(k, k + 1);
+    else if (act === 'del') {
+      if (set.length >= all.length) return status('A deck needs at least one slide');
+      record(); const next = Math.min(k, all.length - set.length - 1);
+      set.forEach(sl => sl.remove()); tpick.clear(); afterChange(next); status(`${set.length} slide${set.length > 1 ? 's' : ''} deleted (not saved yet)`);
+    }
+  }
+  const skipped = sl => sl.hasAttribute('data-skip');
+  function pstep(d) { // present mode steps over skipped slides
+    const all = slides(); let n = i + d;
+    while (n >= 0 && n < all.length && skipped(all[n])) n += d;
+    if (n >= 0 && n < all.length) show(n);
+  }
+
   function addSlide(layout) {
     record();
     const s = document.createElement('section');
     s.className = 'slide';
-    s.innerHTML = layout ? DS.layouts[layout].html.trim() : BLANK;
+    const L = layout ? LAYOUTS[layout] : null, cur = slides()[i];
+    s.innerHTML = L ? (L.ds ? L.html.trim() : layoutHtml(L.html, U)) : (DS ? BLANK : layoutHtml(GEN_LAYOUTS.titlebody.html, U));
     if (layout) s.dataset.layout = layout;
+    applyLook(s, L);
     (slides()[i] || stage.lastElementChild).after(s);
     afterChange(i + 1);
   }
 
   // --- insert, select, move, resize ---
+  const SHAPE_CLIP = {
+    diamond: 'polygon(50% 0,100% 50%,50% 100%,0 50%)',
+    'arrow-right': 'polygon(0 25%,60% 25%,60% 0,100% 50%,60% 100%,60% 75%,0 75%)', 'arrow-left': 'polygon(100% 25%,40% 25%,40% 0,0 50%,40% 100%,40% 75%,100% 75%)',
+    'arrow-up': 'polygon(25% 100%,25% 40%,0 40%,50% 0,100% 40%,75% 40%,75% 100%)', 'arrow-down': 'polygon(25% 0,25% 60%,0 60%,50% 100%,100% 60%,75% 60%,75% 0)',
+  };
   function insert(kind) {
     const sl = slides()[i];
     if (!sl) return;
@@ -319,6 +428,23 @@
     } else if (kind === 'line') {
       el = document.createElement('div');
       el.setAttribute('style', box(320 * U, 4 * U) + `background:${DEF.line};`);
+    } else if (kind === 'connector') { // a line with a filled arrow head at its end
+      el = document.createElement('div');
+      el.dataset.shape = 'connector'; el.dataset.head = 'end';
+      el.setAttribute('style', box(320 * U, 4 * U) + `background:${DEF.line};color:${DEF.line};--hs:${Math.round(9 * U)}px;`);
+    } else if (kind.startsWith('icon:')) {
+      const name = kind.slice(5);
+      el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      el.setAttribute('viewBox', '0 0 24 24'); el.setAttribute('fill', 'none'); el.setAttribute('stroke', 'currentColor');
+      el.setAttribute('stroke-width', '2'); el.setAttribute('stroke-linecap', 'round'); el.setAttribute('stroke-linejoin', 'round');
+      el.setAttribute('data-icon', name); el.setAttribute('aria-label', name);
+      el.setAttribute('style', box(96 * U, 96 * U) + `color:${DEF.text};`);
+      el.innerHTML = window.DECK_ICONS[name] || '';
+    } else if (SHAPE_CLIP[kind]) {
+      el = document.createElement('div');
+      el.dataset.shape = kind;
+      const wide = kind.endsWith('left') || kind.endsWith('right');
+      el.setAttribute('style', box((wide ? 280 : 200) * U, (kind.endsWith('up') || kind.endsWith('down') ? 280 : wide ? 200 : 200) * U) + `background:${DEF.fill};clip-path:${SHAPE_CLIP[kind]};`);
     } else {
       el = document.createElement('div');
       const radius = kind === 'round' ? `${16 * U}px` : kind === 'ellipse' ? '50%' : '0';
@@ -629,8 +755,12 @@
     const b = e.target.closest('[data-ctx]');
     if (b && !b.disabled) { closeMenu(); exec(b.dataset.ctx); }
   });
+  $('ed-ctx').addEventListener('click', e => {
+    const b = e.target.closest('[data-sctx]');
+    if (b && !b.disabled) { closeMenu(); slideAct(b.dataset.sctx, +b.dataset.k); }
+  });
   window.addEventListener('blur', closeMenu);
-  stage.addEventListener('click', e => { if (presenting()) show(i + (e.clientX < innerWidth / 4 ? -1 : 1)); });
+  stage.addEventListener('click', e => { if (presenting()) pstep(e.clientX < innerWidth / 4 ? -1 : 1); });
 
   // --- floating toolbars ---
   // One toolbar floats above the primary (last) selected element: text, box or table-cell tools. Popovers open under it (#ed-pop).
@@ -1425,7 +1555,7 @@
 
   function present(on) {
     document.body.classList.toggle('presenting', on);
-    if (on) { select(null); document.activeElement?.blur?.(); document.documentElement.requestFullscreen?.().catch(() => {}); }
+    if (on) { select(null); document.activeElement?.blur?.(); document.documentElement.requestFullscreen?.().catch(() => {}); if (skipped(slides()[i])) pstep(1); }
     else if (document.fullscreenElement) document.exitFullscreen();
     fit();
   }
@@ -1471,6 +1601,7 @@
     document.body.appendChild(host);
     try {
       for (const [k, s] of slides().entries()) {
+        if (skipped(s)) continue;
         status(`Exporting ${k + 1}/${slides().length}`);
         const c = cleanClone(s);
         c.classList.add('active');
@@ -1564,6 +1695,7 @@
     return { ...b, x, w: b.w + extra, margin: pad, valign, wrap: true, fit: fitMode(el) === 'shrink' ? 'shrink' : 'none', ...(rotOf(el) ? { rotate: rotOf(el) } : {}), align, ...(lh ? { lineSpacing: pt(lh) } : {}) };
   }
 
+  const PPT_SHAPE = { diamond: 'diamond', 'arrow-right': 'rightArrow', 'arrow-left': 'leftArrow', 'arrow-up': 'upArrow', 'arrow-down': 'downArrow' };
   async function slideToPptx(p, c) {
     const o = c.getBoundingClientRect();
     const box = el => { const r = el.getBoundingClientRect(), rot = rotOf(el), w = rot ? el.offsetWidth : r.width, h = rot ? el.offsetHeight : r.height; return { x: (r.left + (r.width - w) / 2 - o.left) / PX, y: (r.top + (r.height - h) / 2 - o.top) / PX, w: w / PX, h: h / PX }; }; // a rotated box is placed by its centre
@@ -1590,6 +1722,10 @@
         ps.addImage({ data: canvas.toDataURL('image/png'), ...b, ...imgExtra(el) });
         continue;
       }
+      if (el.dataset.shape === 'connector') { // a line with an arrow head (the head is the ::after triangle)
+        ps.addShape('line', { x: b.x, y: b.y + b.h / 2, w: b.w, h: 0, line: { color: hex(cs.backgroundColor), width: pt(b.h * PX), endArrowType: el.dataset.head === 'none' ? undefined : 'triangle' }, ...shapeExtra(el) });
+        continue;
+      }
       const bw = parseFloat(cs.borderTopWidth), bbw = parseFloat(cs.borderBottomWidth);
       const border = bw > 0 && cs.borderTopStyle !== 'none' && !clear(cs.borderTopColor);
       const bg = clear(cs.backgroundColor) ? gradFirst(cs.backgroundImage) : cs.backgroundColor;
@@ -1597,7 +1733,7 @@
         const r = parseFloat(cs.borderTopLeftRadius) || 0;
         const ellipse = cs.borderTopLeftRadius.includes('%') && r >= 50;
         const rr = Math.min(r / PX, b.w / 2, b.h / 2);
-        ps.addShape(ellipse ? 'ellipse' : r ? 'roundRect' : 'rect', {
+        ps.addShape(PPT_SHAPE[el.dataset.shape] || (ellipse ? 'ellipse' : r ? 'roundRect' : 'rect'), {
           ...b, ...(!ellipse && r ? { rectRadius: rr } : {}),
           fill: clear(bg) ? { type: 'none' } : { color: hex(bg), transparency: trans(alpha(bg), opacityOf(el)) },
           line: border ? { color: hex(cs.borderTopColor), width: pt(bw), transparency: trans(alpha(cs.borderTopColor), opacityOf(el)), ...(DASH[cs.borderTopStyle] ? { dashType: DASH[cs.borderTopStyle] } : {}) } : { type: 'none' },
@@ -1662,6 +1798,7 @@
     prev: () => show(i - 1), next: () => show(i + 1),
     image: () => $('ed-file').click(),
     text: () => insert('text'), table: () => insert('table'), rect: () => insert('rect'), round: () => insert('round'), ellipse: () => insert('ellipse'), line: () => insert('line'),
+    diamond: () => insert('diamond'), connector: () => insert('connector'), 'arrow-right': () => insert('arrow-right'), 'arrow-left': () => insert('arrow-left'), 'arrow-up': () => insert('arrow-up'), 'arrow-down': () => insert('arrow-down'),
   };
   document.addEventListener('pointerdown', e => {
     // Keep the text caret when a menu is opened.
@@ -1671,7 +1808,7 @@
     const menuBtn = e.target.closest('[data-menu]');
     const keep = menuBtn?.parentElement;
     document.querySelectorAll('.ed-menu.open').forEach(m => { if (m !== keep) m.classList.remove('open'); });
-    if (menuBtn) return keep.classList.toggle('open');
+    if (menuBtn) { keep.classList.toggle('open'); if (keep.id === 'ed-add' && keep.classList.contains('open')) buildGallery(); if (keep.id === 'ed-icons-menu' && keep.classList.contains('open')) buildIcons(); return; }
     // Only editor chrome carries commands; slide content may use the same attribute names (e.g. data-layout).
     const t = e.target.closest('[data-chrome] :is([data-cmd], [data-zoom], [data-view], [data-add])');
     if (!t) return;
@@ -1680,6 +1817,10 @@
     else if (t.dataset.zoom) { zoom = t.dataset.zoom; fit(); }
     else if (t.dataset.view) setView(t.dataset.view);
     else if (t.dataset.add !== undefined) addSlide(t.dataset.add);
+  });
+  document.addEventListener('click', e => {
+    const b = e.target.closest('#ed-icons-menu [data-icon]');
+    if (b) { b.closest('.ed-menu').classList.remove('open'); insert('icon:' + b.dataset.icon); }
   });
   $('ed-file').onchange = e => {
     const f = e.target.files[0];
@@ -1717,8 +1858,8 @@
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (mod && k === 's') { e.preventDefault(); save(); return; }
     if (presenting()) {
-      if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) show(i + 1);
-      else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) show(i - 1);
+      if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) pstep(1);
+      else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) pstep(-1);
       else if (e.key === 'Escape') present(false);
       return;
     }
@@ -1727,6 +1868,10 @@
     if (e.target.isContentEditable) { if (e.key === 'Escape') { e.preventDefault(); stopEdit(); } return; } // while typing the browser keeps its own text undo / copy / paste
     if (e.target.closest?.('textarea, input, select')) { if (e.key === 'Escape') e.target.blur(); return; }
     if (e.key === 'F5') { e.preventDefault(); present(true); return; }
+    if (!mod && !e.altKey) { // shape keys, as in Claude Slides
+      const sk = { r: e.shiftKey ? 'round' : 'rect', o: 'ellipse', d: 'diamond', l: e.shiftKey ? 'connector' : 'line' }[k];
+      if (sk) { e.preventDefault(); insert(sk); return; }
+    }
     if (mod && !e.altKey && (k === 'z' || k === 'y')) { e.preventDefault(); k === 'y' || e.shiftKey ? redo() : undo(); return; }
     const act = mod && { x: 'cut', c: 'copy', v: 'paste', d: 'dup', g: e.shiftKey ? 'ungroup' : 'group', l: e.altKey && 'link' }[k];
     if (act) { e.preventDefault(); if (!exec(act) && act === 'dup') manage('dup', i); return; } // Ctrl+D with nothing selected copies the slide

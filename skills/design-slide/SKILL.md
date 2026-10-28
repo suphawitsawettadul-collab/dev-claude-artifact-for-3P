@@ -56,5 +56,5 @@ folder in `$DESIGN_SLIDE_DIR`). Node 20 or newer is needed. Do not publish the d
 
 ## Known limits
 
-`<x-icon>` shows as a dot, `<x-connector>` and `<x-embed>` are left out (the build prints a NOTE for each), transitions and
-builds are not played. Everything else in `format.md` renders and stays editable.
+`<x-connector>` and `<x-embed>` are left out (the build prints a NOTE for each), and `<x-icon>` names outside the 30-icon set
+show as a dot. Build-in animations are not played (slide transitions fade and push are). Everything else in `format.md` renders and stays editable.
