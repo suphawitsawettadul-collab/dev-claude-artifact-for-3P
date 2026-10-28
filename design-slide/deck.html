@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deck PoC</title>
+<link rel="stylesheet" href="editor.css">
+<style>
+  /* Deck theme: slide content only. Editor chrome lives in editor.css / editor.js. */
+  .slide { padding: 72px 88px; gap: 28px; font-family: "Segoe UI", "Leelawadee UI", sans-serif; color: #1d2433; }
+  h1 { font-size: 64px; margin: 0; line-height: 1.15; }
+  h2 { font-size: 44px; margin: 0; color: #0057a8; }
+  p, li { font-size: 28px; line-height: 1.5; margin: 0; color: #5b6475; }
+  ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 12px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: auto; }
+  .card { background: #f3f6fa; border-radius: 16px; padding: 28px; font-size: 24px; color: #5b6475; }
+  .card b { display: block; font-size: 52px; color: #0057a8; }
+  .title-slide { justify-content: center; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <section class="slide title-slide">
+    <h1 data-edit="">Deck PoC: แก้ slide ได้ในที่</h1>
+    <p data-edit="">กด E เพื่อแก้ข้อความ · Ctrl+S เพื่อบันทึก · ลูกศรเพื่อเลื่อน slide</p>
+  </section>
+  <section class="slide">
+    <h2 data-edit="">ทำงานยังไง</h2>
+    <ul data-edit="">
+      <li>Deck เป็นไฟล์ HTML ไฟล์เดียวในเครื่อง</li>
+      <li>โหมดแก้: คลิกข้อความแล้วพิมพ์ได้เลย</li>
+      <li>บันทึกแล้วเขียนทับไฟล์เดิม เก็บ .bak ไว้ 1 รุ่น</li>
+      <li>แก้ใหญ่ (layout, slide ใหม่, chart) สั่ง Claude ในแชท</li>
+    </ul>
+  </section><section class="slide">
+    <h2 data-edit="">ตัวอย่าง card ตัวเลข</h2>
+    <p data-edit="">แก้ตัวเลขใน card ได้เหมือนข้อความทั่วไป</p>
+    <div class="cards">
+      <div class="card"><b data-edit="">30</b><span data-edit="">งานที่เปิดอยู่</span></div>
+      <div class="card"><b data-edit="">16</b><span data-edit="">model ที่ตั้ง RLS</span></div>
+      <div class="card"><b data-edit="">147</b><span data-edit="">สมาชิก RLS</span></div>
+    </div>
+  </section>
+  
+</div>
+<script src="editor.js"></script>
+
+
+</body></html>

@@ -1,0 +1,20 @@
+import { start, ok } from './t-lib.mjs';
+import * as L from './t-lib.mjs';
+const rect = sel => L.b.ev(`(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; })()`);
+await start('http://localhost:' + process.env.PORT + '/tu-test.html#6');
+const b = L.b;
+const t0 = await rect('.slide.active table');
+const [x, y] = await L.at('.slide.active td');
+await b.click(x, y);
+ok((await L.S())[0].startsWith('cell:'), 'cell selected');
+await b.drag(x, y, x + 40, y + 30);
+const t1 = await rect('.slide.active table');
+ok(Math.abs(t1[0] - t0[0] - 40) < 1.5 && Math.abs(t1[1] - t0[1] - 30) < 1.5 && Math.abs(t1[2] - t0[2]) < 1.5, 'dragging a cell moves its table', JSON.stringify([t0, t1]));
+const s = await L.S(); ok(s.length === 1 && s[0].startsWith('table:'), 'table is now selected', JSON.stringify(s));
+await L.esc();
+// click only (no drag) on cell twice edits, table untouched
+const [x2, y2] = await L.at('.slide.active td');
+await b.click(x2, y2); await b.click(x2, y2);
+ok(await b.ev('document.activeElement.nodeName') === 'TD', 'click on selected cell edits');
+console.log(b.logs.join('\n')); console.log('cell', L.passes, 'pass', L.fails, 'fail');
+await b.close();

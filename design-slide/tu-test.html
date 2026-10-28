@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deck Editor: ทดสอบกับ Thai Union design system</title>
+<link rel="stylesheet" href="editor.css">
+<script src="ds-tu.js"></script>
+</head>
+<body>
+<div id="stage">
+  <section class="slide" data-layout="cover">
+    <img class="tu-bg" src="tu-bg-cover.png" alt="">
+    <div class="tu-cover-title"><h1 data-edit="">HTML Deck Editor<br>for Claude 3P</h1><p data-edit="">แก้ slide ได้ในที่ เหมือน Claude Slides แล้ว export เป็น PDF หรือ PowerPoint</p></div>
+    <div class="tu-cover-date" data-edit="">28 October 2026</div>
+    <aside class="notes" hidden="">เปิดด้วยปัญหา: ใน 3P mode ใช้ Claude Slides ไม่ได้ แต่ยังอยากแก้ deck เองได้</aside>
+  </section>
+  <section class="slide" data-layout="agenda">
+    <img class="tu-bg" src="tu-bg-agenda.png" alt="">
+    <div class="tu-agenda-h" data-edit="">Agenda</div>
+    <div class="tu-agenda-list">
+      <div class="tu-agenda-item"><b>01</b><div><h3 data-edit="">ทำไมต้องมี</h3><p data-edit="">3P mode ไม่มี Claude Slides</p></div></div>
+      <div class="tu-agenda-item"><b>02</b><div><h3 data-edit="">ทำอะไรได้</h3><p data-edit="">แก้ในที่ จัดการ slide และ export</p></div></div>
+      <div class="tu-agenda-item"><b>03</b><div><h3 data-edit="">ขั้นต่อไป</h3><p data-edit="">ย้ายเข้า vault ให้ทีมใช้</p></div></div>
+    </div>
+  </section>
+  <section class="slide" data-layout="section">
+    <img class="tu-bg" src="tu-bg-section.png" alt="">
+    <div class="tu-sec-num" data-edit="">01</div>
+    <div class="tu-sec-title" data-edit="">ทำอะไรได้บ้าง</div>
+  </section>
+  <section class="slide" data-layout="content">
+    <img class="tu-bg" src="tu-bg-content.png" alt="">
+    <div class="tu-title" data-edit="">สิ่งที่ editor ทำได้</div>
+    <div class="tu-sub" data-edit="">ทุกอย่างอยู่ในไฟล์ HTML ไฟล์เดียวบนเครื่อง ไม่ต้องแชร์</div>
+    <div class="tu-body"><ul data-edit="">
+      <li>คลิกข้อความแล้วพิมพ์ได้เลย ส่วน shape / กล่องข้อความลากย้ายและปรับขนาดได้</li>
+      <li>เพิ่ม slide จาก layout ของ design system, ทำซ้ำ, ลบ, ลากสลับลำดับ</li>
+      <li>Speaker notes, โหมดนำเสนอ, grid view, zoom</li>
+      <li>Export PDF และ <b>PowerPoint ที่แก้ข้อความได้</b></li>
+    </ul></div>
+    <div class="tu-page" data-page-number="">4</div>
+    <aside class="notes" hidden="">เน้นว่า PPTX แก้ข้อความได้จริง ไม่ใช่รูป</aside>
+  </section>
+  <section class="slide" data-layout="numbers">
+    <img class="tu-bg" src="tu-bg-content.png" alt="">
+    <div class="tu-title" data-edit="">ตัวเลขจากงาน RLS</div>
+    <div class="tu-sub" data-edit="">ตัวอย่าง layout Big numbers</div>
+    <div class="tu-cards">
+      <div class="tu-card"><b data-edit="">147</b><span data-edit="">สมาชิก RLS ที่เพิ่ม</span></div>
+      <div class="tu-card"><b data-edit="">16</b><span data-edit="">semantic model</span></div>
+      <div class="tu-card"><b data-edit="">27</b><span data-edit="">งานที่เปิดอยู่</span></div>
+    </div>
+    <div class="tu-page" data-page-number="">5</div>
+  </section>
+  <section class="slide" data-layout="table">
+    <img class="tu-bg" src="tu-bg-content.png" alt="">
+    <div class="tu-title" data-edit="">สถานะฟีเจอร์</div>
+    <div class="tu-sub" data-edit="">ตาราง weekly check-in style: หัวตาราง navy, สถานะเป็นคำ</div>
+    <table class="tu-table">
+      <tbody><tr><th data-edit="">ฟีเจอร์</th><th data-edit="">หมายเหตุ</th><th data-edit="">สถานะ</th></tr>
+      <tr><td data-edit="">แก้ข้อความในที่</td><td data-edit="">คลิกแล้วพิมพ์</td><td><span class="tu-status tu-done" data-edit="">Done</span></td></tr>
+      <tr><td data-edit="">Export PPTX แก้ได้</td><td data-edit="">text box, shape, bullet, notes</td><td><span class="tu-status tu-done" data-edit="">Done</span></td></tr>
+      <tr><td data-edit="">ย้ายเข้า vault</td><td data-edit="">ให้ทีมใช้ร่วมกัน</td><td><span class="tu-status tu-prog" data-edit="">In progress</span></td></tr>
+      <tr><td data-edit="">Chart แบบแก้ได้</td><td data-edit="">ตอนนี้ export เป็นรูป</td><td><span class="tu-status tu-risk" data-edit="">Not started</span></td></tr>
+    </tbody></table>
+    <div class="tu-page" data-page-number="">6</div>
+  </section>
+  <section class="slide" data-layout="closing">
+    <img class="tu-bg" src="tu-bg-closing.png" alt="">
+    <div class="tu-close" data-edit="">Thank You</div>
+  </section>
+</div>
+<script src="editor.js"></script>
+
+
+</body></html>

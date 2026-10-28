@@ -1,0 +1,31 @@
+import { start, ok } from './t-lib.mjs';
+import * as L from './t-lib.mjs';
+await start('http://localhost:' + process.env.PORT + '/tu-test.html#1');
+const b = L.b;
+const kinds = async sel => { await L.clickOn(sel); const s = await L.S(); return s.length === 1 ? s[0] : JSON.stringify(s); };
+await L.go(4);
+ok((await kinds('.slide.active ul li:nth-child(2)')).startsWith('text:'), 'li click picks whole ul');
+ok(await b.ev(`DeckEditor.selection[0].el.nodeName`) === 'UL', 'ul is the selection');
+ok((await kinds('.slide.active .tu-title')).startsWith('text:'), 'tu-title text');
+// the bg image is never picked
+const [x, y, w, h] = await L.sc();
+await b.click(x + w * 0.9, y + h * 0.9);
+ok((await L.S())[0]?.startsWith('slide:'), 'click on .tu-bg area selects slide');
+ok(await b.ev(`DeckEditor.selection[0].el.classList.contains('slide')`), 'slide el');
+await L.go(5);
+const card = await b.ev(`(() => { const r = document.querySelector('.slide.active .tu-card').getBoundingClientRect(); return [r.left + 6, r.top + r.height - 6]; })()`);
+await b.click(card[0], card[1]);
+let s = await L.S(); ok(s.length === 1 && s[0].startsWith('shape:tu-card'), 'card padding picks painted div', JSON.stringify(s));
+ok((await kinds('.slide.active .tu-card b')).startsWith('text:'), 'card b data-edit text');
+await L.go(6);
+ok((await kinds('.slide.active td')).startsWith('cell:'), 'td cell');
+ok((await kinds('.slide.active .tu-status')).startsWith('text:tu-status'), 'status span text');
+// cell: no handles, can't drag; click again edits
+await L.clickOn('.slide.active td');
+ok(await b.ev(`document.querySelectorAll('.ed-sel i').length`) === 0, 'cell no handles');
+await L.clickOn('.slide.active td');
+ok(await b.ev(`document.activeElement.nodeName`) === 'TD', 'second click on cell edits');
+await L.esc(); await L.esc();
+console.log(b.logs.join('\n'));
+console.log('A1b done', L.passes, 'pass', L.fails, 'fail');
+await b.close();
