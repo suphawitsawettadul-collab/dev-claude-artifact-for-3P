@@ -1,6 +1,6 @@
 // Editor chrome for an HTML deck (Claude Slides style): filmstrip + grid view, slide management, inline text editing,
 // insert text / image / table / shapes, click-to-select any element with move + resize, right-click menu, undo / redo,
-// speaker notes, present, zoom, save, export PDF / PPTX.
+// speaker notes under the slide, properties panel, shrink-to-fit text, present, zoom, save, export PDF / PPTX.
 // Optional design system: a deck that loads a ds-*.js before this file (window.DECK_DS) gets its css, fonts, layouts and colours.
 // The deck file holds only its slides; everything this script adds is marked data-chrome and stripped on save.
 (() => {
@@ -121,6 +121,7 @@
     strip: '<rect x="2" y="4" width="20" height="12" rx="2"/><path d="M7 20h10"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>', lineh: '<path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4"/>', letter: '<path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/>',
   };
   // Per-viewer UI preferences (theme, filmstrip size); the page works without them.
   const pref = (k, v) => { try { if (v === undefined) return localStorage.getItem('deck-ed:' + k); localStorage.setItem('deck-ed:' + k, v); } catch { return null; } };
@@ -163,23 +164,23 @@
       <div class="ed-menu"><button data-menu id="ed-dl" title="Download">${ic('download')}</button>
         <div class="items right"><button data-cmd="pdf">PDF (.pdf)</button><button data-cmd="pptx">PowerPoint (.pptx)</button></div></div>
       <button data-cmd="present" title="Present (F5)">${ic('play')}</button>
-      <button data-cmd="panel" title="Speaker notes">${ic('panel')}</button>
+      <button data-cmd="panel" id="ed-pp" title="Show properties">${ic('panel')}</button>
       <div class="ed-menu"><button data-menu id="ed-zoom">100%${ic('chevron', 14)}</button>
         <div class="items right"><button data-zoom="fit">Fit</button><button data-zoom="0.25">25%</button><button data-zoom="0.5">50%</button><button data-zoom="0.75">75%</button><button data-zoom="1">100%</button></div></div>
     </div>
-    <aside id="ed-panel" data-chrome><div class="h">Speaker notes</div><textarea id="ed-notes" placeholder="Speaker notes for this slide"></textarea></aside>
+    <aside id="ed-panel" data-chrome><div class="pp-head"><b id="pp-title">Slide</b><button class="pp-x" data-cmd="panel" title="Close">${ic('x', 16)}</button></div><div id="pp-body"></div></aside><div id="ed-notesbox" data-chrome><div id="ed-nresize" title="Drag to resize"></div><textarea id="ed-notes" placeholder="Speaker notes"></textarea></div>
     <div id="ed-grid" data-chrome></div>
     <div id="ed-pill" data-chrome>
       <button data-cmd="prev" title="Previous">${ic('left', 16)}</button><span id="ed-pos"></span><button data-cmd="next" title="Next">${ic('right', 16)}</button>
       <span class="ed-sep"></span>
-      <button data-cmd="panel" title="Speaker notes">${ic('notes', 16)}</button>
+      <button data-cmd="notes" title="Show speaker notes">${ic('notes', 16)}</button>
       <button data-cmd="strip" title="Show filmstrip">${ic('strip', 16)}</button>
     </div>
     <footer id="ed-strip" data-chrome>
       <div id="ed-resize" title="Drag to resize"></div>
       <div class="bar">
         <div class="ed-menu"><button data-menu title="New slide">${ic('plus')}</button><div class="items up">${addItems}</div></div>
-        <button data-cmd="panel" title="Speaker notes">${ic('notes')}</button>
+        <button data-cmd="notes" title="Show speaker notes">${ic('notes')}</button>
         <span class="grow"></span>
         <div class="ed-seg"><button data-view="single" title="Single slide">${ic('single', 16)}</button><button data-view="grid" title="Grid view">${ic('grid', 16)}</button></div>
         <button data-cmd="strip" title="Hide filmstrip">${ic('chevron')}</button>
@@ -222,12 +223,13 @@
   }
 
   // A copy of a slide with no editor state, for thumbnails and export.
-  function cleanClone(s) {
+  function cleanClone(s, keep) {
     const c = s.cloneNode(true);
     c.querySelectorAll('[data-chrome]').forEach(n => n.remove());
     c.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
     c.style.removeProperty('zoom');
     c.classList.remove('active');
+    if (!keep) unfitIn(c); // the snapshot / saved / exported copy keeps the authored sizes
     if (!c.getAttribute('style')) c.removeAttribute('style');
     return c;
   }
@@ -242,7 +244,7 @@
       t.style.width = tw + 4 + 'px'; t.style.height = tw * H / W + 4 + 'px';
       t.draggable = true;
       t.innerHTML = `<span class="num">${k + 1}</span><div class="tools"><button data-act="dup" title="Duplicate (Ctrl+D)">${ic('copy', 13)}</button><button data-act="del" title="Delete">${ic('trash', 13)}</button></div>`;
-      const c = cleanClone(s);
+      const c = cleanClone(s, true); // thumbnails keep the shrunk look of the live slide
       c.style.zoom = tw / W;
       t.appendChild(c);
       t.onclick = e => { const act = e.target.closest('[data-act]')?.dataset.act; if (act) return manage(act, k); show(k); if (box.id === 'ed-grid') setView('single'); };
@@ -269,7 +271,7 @@
 
   // --- slide management ---
   function afterChange(next) {
-    numberPages(); markDirty(); buildThumbs(); fit(); show(next);
+    numberPages(); fitAll(); markDirty(); buildThumbs(); fit(); show(next);
   }
   function move(from, to) {
     const all = slides();
@@ -389,6 +391,7 @@
   function drawSel() {
     stage.querySelectorAll('.ed-sel').forEach(n => n.remove());
     sel = sel.filter(el => el.isConnected);
+    fitSlide(slides()[i]); ppRefresh();
     if (!sel.length || presenting()) return tbPlace();
     const host = slideOf(sel[0]), mv = sel.filter(movable);
     const frame = (g, handles) => {
@@ -428,6 +431,7 @@
   // --- pin, move, resize ---
   // Class rules that style text may not follow the element to a new parent, so the computed values are written inline first.
   function freezeText(el) {
+    unfitText(); // freeze the authored sizes, not the shrunk ones
     const cs = getComputedStyle(el);
     [...TEXT_PROPS, ...(el.matches('ul, ol') ? LIST_PROPS : [])].forEach(p => el.style.setProperty(p, cs.getPropertyValue(p)));
   }
@@ -584,13 +588,14 @@
     status('Link copied: ' + url);
   }
   // Every action: on() says whether it applies to the current selection, run() does it. Menu and shortcuts share this table.
-  const copy = () => { clip = { items: ops().map(copyOf), n: 0 }; status(`Copied ${clip.items.length} element(s)`); };
+  const copies = () => asAuthored(() => ops().map(copyOf));
+  const copy = () => { clip = { items: copies(), n: 0 }; status(`Copied ${clip.items.length} element(s)`); };
   const ACT = {
     cut: { on: () => ops().length, run: () => { copy(); del(); } },
     copy: { on: () => ops().length, run: copy },
     link: { on: () => true, run: copyLink },
     paste: { on: () => clip, run: () => paste(clip.items, ++clip.n) },
-    dup: { on: () => ops().length, run: () => paste(ops().map(copyOf), 1) },
+    dup: { on: () => ops().length, run: () => paste(copies(), 1) },
     front: { on: () => ops().length, run: () => reorder(true) },
     back: { on: () => ops().length, run: () => reorder(false) },
     group: { on: canGroup, run: group },
@@ -651,7 +656,7 @@
   function change(fn, key) {
     const merge = key && key === lastKey && Date.now() - lastAt < 800;
     lastKey = key || ''; lastAt = Date.now();
-    if (!merge) record();
+    if (!merge) record(); unfitText();
     fn(); markDirty(); drawSel(); refreshThumbs();
   }
   const hexOf = c => { const p = parseCss(c || ''); return p && p[3] > 0 ? toHex(p[0], p[1], p[2]) : ''; };
@@ -667,10 +672,7 @@
   const FONTS = [...dsFonts.map(f => [f, `'${f}', 'Leelawadee UI', Arial, sans-serif`]), ['Sans-serif', 'Arial, sans-serif'], ['Serif', 'Georgia, serif'], ['Monospace', 'Consolas, monospace']];
   const WEIGHTS = [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Extra bold']];
   const famOf = el => csOf(el).fontFamily.split(',')[0].replace(/["']/g, '').trim();
-  function styleOf(el) {
-    const cs = csOf(el), size = Math.round(parseFloat(cs.fontSize));
-    return { s: matchStyle(TS, el.dataset.style, size, cs.fontWeight, hexOf(cs.color)), size };
-  }
+  const styleOf = el => asAuthored(() => styleRaw(el)); // styleRaw: see the panel section
 
   // selected text range while editing (live, or the one saved when a popover took focus)
   function rangeNow() {
@@ -740,14 +742,14 @@
     tb.style.top = top + 'px';
   }
   function popAt() {
-    const p = $('ed-pop'), b = $('ed-tb').querySelector(`[data-tb="${pop}"]`);
+    const p = $('ed-pop'), b = document.querySelector(`#ed-tb [data-tb="${pop}"], #ed-panel [data-tb="${pop}"]`);
     if (!b) return closePop();
     p.style.display = 'block';
-    const r = b.getBoundingClientRect(), t = $('ed-tb').getBoundingClientRect();
-    let top = t.bottom + 8;
-    if (top + p.offsetHeight > innerHeight - 8) top = t.top - 8 - p.offsetHeight;
+    const r = b.getBoundingClientRect(), inPane = !!b.closest('#ed-panel'), t = $('ed-tb').getBoundingClientRect();
+    let top = inPane ? r.top : t.bottom + 8; // from the panel the popover opens to its left
+    if (top + p.offsetHeight > innerHeight - 8) top = inPane ? innerHeight - 8 - p.offsetHeight : t.top - 8 - p.offsetHeight;
     p.style.top = Math.max(8, top) + 'px';
-    p.style.left = Math.max(8, Math.min(r.left, innerWidth - p.offsetWidth - 8)) + 'px';
+    p.style.left = (inPane ? Math.max(8, $('ed-panel').getBoundingClientRect().left - p.offsetWidth - 8) : Math.max(8, Math.min(r.left, innerWidth - p.offsetWidth - 8))) + 'px';
   }
   function closePop() {
     if (!pop) return;
@@ -772,11 +774,11 @@
   document.addEventListener('selectionchange', () => { if (editing) tbPlace(); });
   $('ed-tb').addEventListener('mousedown', e => e.preventDefault()); // a press on the toolbar must not take focus (the text caret stays)
   $('ed-pop').addEventListener('mousedown', e => { if (!e.target.closest('input, select, textarea')) e.preventDefault(); });
-  document.addEventListener('pointerdown', e => { if (pop && !e.target.closest('#ed-pop, #ed-tb')) closePop(); }, true);
+  document.addEventListener('pointerdown', e => { if (pop && !e.target.closest('#ed-pop, #ed-tb, #ed-panel [data-tb]')) closePop(); }, true);
 
   // --- B1: text style popover (Theme | Custom) ---
-  function applyStyle(s) {
-    change(() => targetsOf(['text']).forEach(el => {
+  function applyStyle(s, kinds = ['text']) {
+    change(() => targetsOf(kinds).forEach(el => {
       el.style.fontSize = s.size + 'px'; el.style.fontWeight = s.weight; if (s.color) el.style.color = s.color;
       el.dataset.style = s.name;
     }));
@@ -784,14 +786,14 @@
   const fontOpts = cur => (FONTS.some(f => f[0] === cur) ? FONTS : [[cur, `'${cur}', sans-serif`], ...FONTS]).map(f => `<option value="${esc(f[1])}"${f[0] === cur ? ' selected' : ''}>${esc(f[0])}</option>`).join('');
   // Family + size (+ weight) form; onApply(props) gets the changed css properties.
   function fontForm(h, el, weight, onApply) {
-    const cs = csOf(el), cur = famOf(el);
+    const cs = asAuthored(() => ({ fontSize: csOf(el).fontSize, fontWeight: csOf(el).fontWeight })), cur = famOf(el);
     h.innerHTML = `<div class="ed-lbl">Font</div><select id="ed-f-fam">${fontOpts(cur)}</select>`
       + `<div class="ed-lbl">Size</div><input type="number" id="ed-f-size" min="6" max="400" value="${Math.round(parseFloat(cs.fontSize))}">`
       + (weight ? `<div class="ed-lbl">Weight</div><select id="ed-f-w">${WEIGHTS.map(([v, n]) => `<option value="${v}"${Math.round(+cs.fontWeight / 100) * 100 === v ? ' selected' : ''}>${n}</option>`).join('')}</select>` : '');
     const go = () => onApply({ fontFamily: h.querySelector('#ed-f-fam').value, fontSize: (+h.querySelector('#ed-f-size').value || 1) + 'px', ...(weight ? { fontWeight: h.querySelector('#ed-f-w').value } : {}) });
     h.querySelectorAll('select, input').forEach(i => { i.oninput = go; i.onchange = go; });
   }
-  function popStyle(h) {
+  function popStyle(h, kinds = ['text']) {
     const el = primary(), cur = styleOf(el).s?.name;
     let tab = 'theme', q = '';
     const list = () => {
@@ -807,9 +809,9 @@
       if (tab === 'theme') {
         body.innerHTML = `<input class="ed-q" placeholder="Search styles" value="${esc(q)}"><div class="ed-list">${list()}</div>`;
         body.querySelector('.ed-q').oninput = e => { q = e.target.value.toLowerCase(); body.querySelector('.ed-list').innerHTML = list(); };
-        body.querySelector('.ed-list').onclick = e => { const b = e.target.closest('[data-s]'); if (b) { applyStyle(TS.find(s => s.name === b.dataset.s)); closePop(); } };
+        body.querySelector('.ed-list').onclick = e => { const b = e.target.closest('[data-s]'); if (b) { applyStyle(TS.find(s => s.name === b.dataset.s), kinds); closePop(); } };
       } else {
-        fontForm(body, el, true, props => change(() => targetsOf(['text']).forEach(t => { Object.assign(t.style, props); delete t.dataset.style; }), 'tstyle'));
+        fontForm(body, el, true, props => change(() => targetsOf(kinds).forEach(t => { Object.assign(t.style, props); delete t.dataset.style; }), 'tstyle'));
       }
       h.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; draw(); popAt(); });
     };
@@ -911,14 +913,15 @@
     if (rangeNow()) return change(() => withRange(() => { document.execCommand('styleWithCSS', false, true); document.execCommand('foreColor', false, css); }), drag && 'tcolor');
     change(() => targetsOf(['text', 'cell']).forEach(el => { el.style.color = css; }), drag && 'tcolor');
   }
-  function applyFill(css, drag) { // css or null (None)
-    change(() => targetsOf(BOX_KINDS).forEach(el => {
+  function setBg(el, css) { // css or null (None)
       if (kindOf(el) === 'slide') { // a slide's background sits under its full-bleed picture, so the picture steps aside while a fill is set
         const im = bleedImg(el);
         if (css) el.style.background = css; else el.style.removeProperty('background');
         if (im) { im.style.display = css ? 'none' : ''; if (css) im.dataset.bgOff = ''; else { delete im.dataset.bgOff; if (!im.getAttribute('style')) im.removeAttribute('style'); } }
       } else el.style.background = css || 'none';
-    }), drag && 'fill');
+  }
+  function applyFill(css, drag) {
+    change(() => targetsOf(BOX_KINDS).forEach(el => setBg(el, css)), drag && 'fill');
   }
   function applyRow(css, drag) { // the row's <tr> and its cells (a class like .tu-table td paints over the row alone)
     const tr = primary().closest('tr');
@@ -1037,6 +1040,380 @@
   };
   $('ed-tb').addEventListener('click', e => { const b = e.target.closest('[data-tb]'); if (b) TB[b.dataset.tb]?.(b); });
 
+  // --- C: shrink text to fit (render-time only) ---
+  // A text box whose content overflows it (a fixed height, or a squeezed column) gets smaller type in steps, down to 60% of the
+  // authored size and never under 8px. The authored inline sizes wait in data-fitted and are put back before every edit, copy and save.
+  // Tolerance: a tight line-height makes the last line's box poke out by a few px; under 15% of a line is not an overflow.
+  const over = a => a.scrollHeight > a.clientHeight + Math.max(1, 0.15 * parseFloat(csOf(a).fontSize)) || a.scrollWidth > a.clientWidth + 1;
+  function unfitIn(root) {
+    root.querySelectorAll('[data-fitted]').forEach(n => {
+      let a = ['', ''];
+      try { a = JSON.parse(n.dataset.fitted); } catch { /* a damaged marker: drop it, keep the blanks */ }
+      if (a[0]) n.style.fontSize = a[0]; else n.style.removeProperty('font-size');
+      if (a[1]) n.style.lineHeight = a[1]; else n.style.removeProperty('line-height');
+      n.removeAttribute('data-fitted');
+      if (!n.getAttribute('style')) n.removeAttribute('style');
+    });
+  }
+  const unfitText = () => unfitIn(slides()[i] || stage);
+  const asAuthored = fn => { unfitText(); try { return fn(); } finally { fitSlide(slides()[i]); } };
+
+  // --- C: size modes. Fixed = px. Fill = the container's width / height (flex:1 along a flex row / column; a pinned element
+  // stretches to the content box of the slide or group it sits in). Hug = fit-content (width) / auto (height). ---
+  const absPos = el => csOf(el).position === 'absolute';
+  const sizeNow = (el, ax) => ax === 'width' ? el.offsetWidth : el.offsetHeight;
+  const flexMain = el => { const cs = csOf(el.parentElement); return cs.display.includes('flex') ? (cs.flexDirection.startsWith('column') ? 'height' : 'width') : ''; };
+  const roomOf = (el, ax) => { // [start, length] of the container's content box
+    const p = absPos(el) ? (el.offsetParent || slideOf(el)) : el.parentElement, cs = csOf(p), W = ax === 'width';
+    const pad = (W ? ['Left', 'Right'] : ['Top', 'Bottom']).map(s => parseFloat(cs['padding' + s]) || 0);
+    return [pad[0], (W ? p.clientWidth : p.clientHeight) - pad[0] - pad[1]];
+  };
+  function sizeMode(el, ax) {
+    const st = el.style, s = st[ax], W = ax === 'width';
+    if (s === '100%' || (flexMain(el) === ax && parseFloat(st.flexGrow) > 0)) return 'fill';
+    if (s === 'fit-content' || (!W && s === 'auto')) return 'hug';
+    const now = sizeNow(el, ax), [a, len] = roomOf(el, ax), at = W ? el.offsetLeft : el.offsetTop;
+    if (/px$/.test(s)) return absPos(el) && Math.abs(now - len) < 1.5 && Math.abs(at - a) < 1.5 ? 'fill' : 'fixed';
+    st[ax] = W ? 'fit-content' : 'auto'; // probe: what would it be if it hugged?
+    const hug = sizeNow(el, ax);
+    if (s) st[ax] = s; else st.removeProperty(ax);
+    if (Math.abs(hug - now) < 1.5) return 'hug';
+    return !absPos(el) && Math.abs(now - len) < 1.5 ? 'fill' : 'fixed';
+  }
+  function setMode(el, ax, m) {
+    const st = el.style, W = ax === 'width', now = sizeNow(el, ax);
+    if (flexMain(el) === ax) st.flex = '';
+    if (m === 'fixed') st[ax] = now + 'px';
+    else if (m === 'hug') st[ax] = W ? 'fit-content' : 'auto';
+    else if (absPos(el)) { const [a, len] = roomOf(el, ax); st[W ? 'left' : 'top'] = a + 'px'; st[W ? 'right' : 'bottom'] = 'auto'; st[ax] = len + 'px'; }
+    else if (flexMain(el) === ax) { st.flex = '1 1 0%'; st[ax] = 'auto'; }
+    else st[ax] = '100%';
+  }
+  function setPx(el, ax, v) { if (flexMain(el) === ax) el.style.flex = ''; el.style[ax] = v + 'px'; }
+
+  // Text with the "Shrink text to fit" resize mode (the default for a box with a fixed height, or inside one).
+  const hFixed = n => !!n && !n.classList.contains('slide') && sizeMode(n, 'height') === 'fixed';
+  const fitMode = el => el.dataset.fit || (hFixed(el) || hFixed(el.parentElement) ? 'shrink' : 'grow');
+  function shrinkUnit(u) {
+    const nodes = [u, ...u.querySelectorAll('*')].filter(n => !n.closest('[data-fit=none], [data-fit=grow], [data-chrome]')).map(n => {
+      const cs = csOf(n);
+      return { n, fs: parseFloat(cs.fontSize), lh: parseFloat(cs.lineHeight) || 0, a: [n.style.fontSize, n.style.lineHeight] };
+    });
+    nodes.forEach(o => { o.n.dataset.fitted = JSON.stringify(o.a); });
+    let f = 1;
+    while (over(u) && f > 0.6) {
+      f = Math.max(0.6, f - 0.02);
+      nodes.forEach(o => { o.n.style.fontSize = Math.max(o.fs * f, Math.min(o.fs, 8)) + 'px'; if (o.lh) o.n.style.lineHeight = o.lh * f + 'px'; });
+    }
+  }
+  function fitSlide(s) {
+    if (!s || !s.isConnected) return;
+    unfitIn(s);
+    const hid = getComputedStyle(s).display === 'none', z = s.style.zoom, sl = stage.scrollLeft, st = stage.scrollTop;
+    if (hid) s.classList.add('active');
+    s.style.zoom = 1; // measured at 100% so the result does not depend on the view zoom
+    let units = [];
+    s.querySelectorAll(TEXT).forEach(el => {
+      if (el.closest('[data-chrome]') || units.some(u => u.contains(el))) return;
+      let u = el;
+      if (!over(el)) { // not itself full: a squeezed column overflows through its parent
+        const p = el.parentElement;
+        if (p === s || !over(p)) return;
+        u = p;
+        while (u.parentElement !== s && over(u.parentElement) && !u.parentElement.matches('[data-group]')) u = u.parentElement;
+      }
+      if (fitMode(el) === 'shrink') units.push(u);
+    });
+    units = units.filter(u => !units.some(v => v !== u && v.contains(u)));
+    [...new Set(units)].forEach(shrinkUnit);
+    s.style.zoom = z;
+    if (hid) s.classList.remove('active');
+    stage.scrollLeft = sl; stage.scrollTop = st;
+  }
+  const fitAll = () => slides().forEach(fitSlide);
+
+  // --- C: properties panel (docked right of the stage; every edit goes through change()) ---
+  // Fields are built by f* helpers that register get(el) / set(el, v) under an id. The panel is rebuilt only when its signature
+  // changes (selection, which rows apply); otherwise ppSync() just writes the current values into the controls.
+  const pp = { sig: '', ids: '', fields: {}, map: new WeakMap(), n: 0, sidesPad: false, sidesRad: false, adv: false, textMore: false, fxMenu: false };
+  const MIX = {};
+  const ppEls = () => sel.length ? sel : [slides()[i]].filter(Boolean);
+  const same = (a, b) => typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) < 0.005 : a === b;
+  const mixed = vs => vs.every(v => same(v, vs[0])) ? vs[0] : MIX;
+  const r2 = n => Math.round(n * 100) / 100;
+  const panelOpen = () => document.body.classList.contains('panel-open');
+  const fNum = (id, o) => { pp.fields[id] = { t: 'num', ...o }; return `<input class="pp-in" type="number" data-pp="${id}" min="${o.min ?? ''}" max="${o.max ?? ''}" step="${o.step ?? 1}"${o.title ? ` title="${o.title}"` : ''}>`; };
+  const fRange = id => { const o = pp.fields[id]; return `<input type="range" data-pp="${id}" min="${o.min}" max="${o.max}" step="${o.step}">`; };
+  const fSel = (id, o) => { pp.fields[id] = { t: 'sel', ...o }; return `<select class="pp-in" data-pp="${id}">${o.opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}<option value="--mixed--" hidden disabled>Mixed</option></select>`; };
+  const fSeg = (id, o) => { pp.fields[id] = { t: 'seg', ...o }; return `<div class="pp-seg" data-pp="${id}">${o.opts.map(([v, l, t]) => `<button data-v="${esc(v)}" title="${esc(t || l)}">${l}</button>`).join('')}</div>`; };
+  const fCol = (id, o) => { pp.fields[id] = { t: 'col', ...o }; return `<button class="pp-sw" data-tb="pp-${id}" data-pp="${id}"><i class="ed-sw"></i><span></span></button>`; };
+  const fTxt = (id, o) => { pp.fields[id] = { t: 'txt', ...o }; return `<input class="pp-in" type="text" data-pp="${id}" spellcheck="false">`; };
+  const fLab = (id, o) => { pp.fields[id] = { t: 'lab', ...o }; return `<button class="pp-sw" data-tb="pp-${id}" data-pp="${id}"><span></span>${ic('chevron', 14)}</button>`; };
+  const pbtn = (act, icon, title, on, d = '') => `<button class="pp-ic${on ? ' on' : ''}" data-act="${act}" ${d} title="${esc(title)}">${icon}</button>`;
+  const prow = (label, ...ctl) => `<div class="pp-row"><label>${label}</label><div class="pp-ctl">${ctl.join('')}</div></div>`;
+  const psec = (title, body, tail = '') => `<section class="pp-sec"><div class="pp-st"><span>${title}</span>${tail}</div>${body}</section>`;
+  const mini = (cap, inner) => `<label class="pp-mini"><span>${cap}</span>${inner}</label>`;
+  const colName = css => { if (!css) return 'None'; if (css.includes('gradient')) return 'Gradient'; const h = hexOf(css); return h ? (tokenName(h) || h.toUpperCase()) : 'None'; };
+
+  function ppSync() {
+    const els = ppEls();
+    for (const [id, f] of Object.entries(pp.fields)) {
+      const v = mixed(els.map(el => f.get(el)));
+      document.querySelectorAll(`#pp-body [data-pp="${id}"]`).forEach(c => {
+        if (c.type === 'range') { if (document.activeElement !== c) c.value = v === MIX ? f.min : v; }
+        else if (f.t === 'num' || f.t === 'txt') { if (document.activeElement !== c) c.value = v === MIX ? '' : f.t === 'num' ? r2(v) : v; c.placeholder = v === MIX ? 'Mixed' : ''; }
+        else if (f.t === 'sel') c.value = v === MIX ? '--mixed--' : String(v);
+        else if (f.t === 'seg') c.querySelectorAll('button').forEach(b => b.classList.toggle('on', v !== MIX && b.dataset.v === v));
+        else if (f.t === 'col') { const sw = c.querySelector('i'); sw.style.background = v === MIX ? '' : v; sw.classList.toggle('none', v === MIX || !v); c.lastChild.textContent = v === MIX ? 'Mixed' : colName(v); }
+        else if (f.t === 'lab') c.firstChild.textContent = v === MIX ? 'Mixed' : v;
+      });
+    }
+  }
+
+  const pane = $('ed-panel');
+  const ppSet = (f, v, key) => change(() => ppEls().forEach(el => f.set(el, v)), key);
+  pane.addEventListener('input', e => {
+    const c = e.target, f = pp.fields[c.dataset?.pp];
+    if (!f || f.t !== 'num' || c.value === '') return;
+    let v = parseFloat(c.value);
+    if (isNaN(v)) return;
+    if (f.min !== undefined) v = Math.max(f.min, v);
+    if (f.max !== undefined) v = Math.min(f.max, v);
+    ppSet(f, v, 'pp:' + c.dataset.pp); // one undo step per field edit (the key merges the keystrokes)
+  });
+  pane.addEventListener('change', e => { const c = e.target, f = pp.fields[c.dataset?.pp]; if (f && (f.t === 'sel' || f.t === 'txt')) ppSet(f, c.value); });
+  pane.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input')) e.target.blur(); });
+  pane.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const id = b.dataset.pp || b.parentElement.dataset?.pp, f = pp.fields[id];
+    if (f?.t === 'seg' && b.dataset.v !== undefined) return ppSet(f, b.dataset.v);
+    if (b.dataset.act) return PACT[b.dataset.act]?.(b);
+    if (f?.t === 'lab') return openPop(b, h => f.pop(h));
+    if (f?.t === 'col') openPop(b, h => popColor(h, { cur: () => { const c = f.get(ppEls().at(-1)); return c.includes('gradient') ? '' : c; }, img: () => f.img?.(ppEls().at(-1)) || '', none: f.none, grad: f.grad, apply: (css, drag) => ppSet(f, css, drag && 'pp:' + id) }));
+  });
+  const PACT = {
+    sidesPad: () => { pp.sidesPad = !pp.sidesPad; ppRefresh(); }, sidesRad: () => { pp.sidesRad = !pp.sidesRad; ppRefresh(); },
+    adv: () => { pp.adv = !pp.adv; ppRefresh(); }, textMore: () => { pp.textMore = !pp.textMore; ppRefresh(); }, fxMenu: () => { pp.fxMenu = !pp.fxMenu; ppRefresh(); },
+    fxadd: b => { const t = b.dataset.t; pp.fxMenu = false; change(() => ppEls().forEach(el => { const fx = getFx(el); fx[t].push(t === 'sh' ? { x: 0, y: Math.round(4 * U), blur: Math.round(12 * U), spread: 0, color: 'rgba(0, 0, 0, 0.25)', inset: false } : { blur: Math.round(8 * U) }); setFx(el, fx, t); })); },
+    fxdel: b => change(() => ppEls().forEach(el => { const fx = getFx(el), t = b.dataset.t; fx[t].splice(+b.dataset.n, 1); setFx(el, fx, t); })),
+    pin: () => change(() => pinAll(ppEls().filter(el => !absPos(el) && movable(el)))),
+  };
+
+  // --- C: sections ---
+  const kidsOf = el => [...el.children].filter(c => !c.matches('[data-chrome]'));
+  const container = el => kindOf(el) === 'slide' || (kindOf(el) === 'shape' && kidsOf(el).length > 0);
+  const textual = el => ['text', 'cell'].includes(kindOf(el)) || (kindOf(el) === 'shape' && !!el.querySelector(TEXT));
+  const TKINDS = ['text', 'cell', 'shape'];
+  const SIDES = ['Top', 'Right', 'Bottom', 'Left'];
+  const SIZE_MODES = [['fixed', 'Fixed'], ['fill', 'Fill'], ['hug', 'Hug']];
+  const AI = [['flex-start', 'Start'], ['center', 'Center'], ['flex-end', 'End'], ['stretch', 'Stretch']];
+  const JC = [['flex-start', 'Start'], ['center', 'Center'], ['flex-end', 'End'], ['space-between', 'Between'], ['space-around', 'Around']];
+  const fixEdge = v => ({ start: 'flex-start', end: 'flex-end' }[v] || v);
+  const dirOf = el => { const cs = csOf(el); return cs.display.includes('grid') ? 'grid' : cs.display.includes('flex') && cs.flexDirection.startsWith('row') ? 'row' : 'column'; };
+  const gapOf = el => { const cs = csOf(el); return Math.max(parseFloat(cs.rowGap) || 0, parseFloat(cs.columnGap) || 0); };
+  const aiOf = el => { const v = csOf(el).alignItems; return v === 'normal' ? 'stretch' : fixEdge(v); };
+  const jcOf = el => { const v = csOf(el).justifyContent; return v === 'normal' ? 'flex-start' : fixEdge(v); };
+  const padN = (el, s) => r2(parseFloat(csOf(el)['padding' + s]) || 0);
+  const padAll = el => { const v = SIDES.map(s => padN(el, s)); return v.every(x => x === v[0]) ? v[0] : NaN; };
+  function ensureFlex(el) { // gap / align / justify only act on a flex or grid box; a plain block stacks like a column
+    if (kindOf(el) !== 'slide' && !/flex|grid/.test(csOf(el).display)) { el.style.display = 'flex'; el.style.flexDirection = 'column'; }
+  }
+  function setDir(el, d) {
+    const st = el.style;
+    if (d === 'grid') { st.display = 'grid'; st.gridTemplateColumns = `repeat(${Math.min(Math.max(kidsOf(el).length, 1), 4)}, 1fr)`; return; }
+    if (kindOf(el) !== 'slide') st.display = 'flex'; // a slide is already a flex column while it is shown
+    st.flexDirection = d; st.removeProperty('grid-template-columns');
+  }
+  function containerRows(slide) {
+    const dirs = [['column', 'Column'], ['row', 'Row'], ...(slide ? [] : [['grid', 'Grid']])];
+    return prow('Direction', fSel('dir', { opts: dirs, get: dirOf, set: setDir }))
+      + prow('Gap', fNum('gap', { min: 0, max: 999, get: gapOf, set: (el, v) => { ensureFlex(el); el.style.gap = v + 'px'; } }))
+      + prow('Align', fSel('ai', { opts: AI, get: aiOf, set: (el, v) => { ensureFlex(el); el.style.alignItems = v; } }))
+      + prow('Justify', fSel('jc', { opts: JC, get: jcOf, set: (el, v) => { ensureFlex(el); el.style.justifyContent = v; } }));
+  }
+  function secLayout(els, cont) {
+    const sides = pp.sidesPad;
+    let h = prow('Padding', sides ? '<span class="pp-fill"></span>' : fNum('pad', { min: 0, max: 999, get: padAll, set: (el, v) => { el.style.padding = v + 'px'; } }), pbtn('sidesPad', ic('spacing', 16), 'Edit each side', sides));
+    if (sides) h += `<div class="pp-sides">${SIDES.map(s => mini(s[0], fNum('pad' + s, { min: 0, max: 999, title: s, get: el => padN(el, s), set: (el, v) => { el.style['padding' + s] = v + 'px'; } }))).join('')}</div>`;
+    if (cont) h += containerRows(els.every(el => kindOf(el) === 'slide'));
+    return psec('Layout', h);
+  }
+  const secSize = () => psec('Size',
+    prow('Width', fNum('w', { min: 1, max: 9999, get: el => sizeNow(el, 'width'), set: (el, v) => setPx(el, 'width', v) }), fSel('wm', { opts: SIZE_MODES, get: el => sizeMode(el, 'width'), set: (el, m) => setMode(el, 'width', m) }))
+    + prow('Height', fNum('h', { min: 1, max: 9999, get: el => sizeNow(el, 'height'), set: (el, v) => setPx(el, 'height', v) }), fSel('hm', { opts: SIZE_MODES, get: el => sizeMode(el, 'height'), set: (el, m) => setMode(el, 'height', m) })));
+
+  // Text
+  const NAMED_W = [[100, 'Thin'], [200, 'Extra light'], [300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semi bold'], [700, 'Bold'], [800, 'Extra bold'], [900, 'Black']];
+  const styleRaw = el => { const cs = csOf(el), size = Math.round(parseFloat(cs.fontSize)); return { s: matchStyle(TS, el.dataset.style, size, cs.fontWeight, hexOf(cs.color)), size }; };
+  const famVal = el => { const n = famOf(el); return (FONTS.find(f => f[0] === n) || [n, `'${n}', sans-serif`])[1]; };
+  const tset = (el, prop, v) => { el.style[prop] = v; if (kindOf(el) === 'text') delete el.dataset.style; };
+  const lhOf = el => { const cs = csOf(el), fs = parseFloat(cs.fontSize); return r2((parseFloat(cs.lineHeight) || fs * 1.2) / fs); };
+  const lsOf = el => r2(parseFloat(csOf(el).letterSpacing) || 0);
+  function setFit(el, m) {
+    const was = fitMode(el), hm = sizeMode(el, 'height');
+    el.dataset.fit = m;
+    if (m === 'grow' && hm !== 'hug') el.style.height = 'auto'; // the box follows its text
+    else if (m !== 'grow' && was === 'grow') el.style.height = el.offsetHeight + 'px'; // the box keeps today's size, the text may shrink in it
+  }
+  function secText(els) {
+    const cur = famOf(els.at(-1)), fonts = (FONTS.some(f => f[0] === cur) ? FONTS : [[cur, `'${cur}', sans-serif`], ...FONTS]).map(f => [f[1], f[0]]);
+    let h = prow('Style', fLab('ts', { get: el => { const r = styleRaw(el); return r.s ? r.s.name : 'Custom ' + DOT + ' ' + r.size; }, pop: hh => popStyle(hh, TKINDS) }))
+      + prow('Font', fSel('ff', { opts: fonts, get: famVal, set: (el, v) => tset(el, 'fontFamily', v) }))
+      + prow('Weight', fSel('fw', { opts: NAMED_W.map(([v, n]) => [String(v), n]), get: el => String(Math.min(900, Math.max(100, Math.round(+csOf(el).fontWeight / 100) * 100))), set: (el, v) => tset(el, 'fontWeight', v) }))
+      + prow('Size', fNum('fs', { min: 6, max: 400, get: el => parseFloat(csOf(el).fontSize), set: (el, v) => tset(el, 'fontSize', v + 'px') }))
+      + prow('Spacing', mini(ic('lineh', 14), fNum('lh', { min: 0.5, max: 5, step: 0.05, title: 'Line height', get: lhOf, set: (el, v) => { el.style.lineHeight = String(v); } })), mini(ic('letter', 14), fNum('ls', { min: -20, max: 100, step: 0.5, title: 'Letter spacing (px)', get: lsOf, set: (el, v) => { el.style.letterSpacing = v + 'px'; } })))
+      + prow('Color', fCol('tc', { get: el => csOf(el).color, set: (el, c) => { el.style.color = c; } }))
+      + prow('Align', fSeg('ta', { opts: ['left', 'center', 'right', 'justify'].map(v => [v, ic('a' + v, 16), 'Align ' + v]), get: alignOf, set: (el, v) => { el.style.textAlign = v; } }));
+    if (els.every(el => kindOf(el) === 'text')) h += prow('Resize', fSel('fit', { opts: [['shrink', 'Shrink text to fit'], ['none', 'Keep size'], ['grow', 'Grow box']], get: fitMode, set: setFit }));
+    if (pp.textMore) h += prow('Case', fSel('tt', { opts: [['none', 'None'], ['uppercase', 'Uppercase'], ['lowercase', 'Lowercase'], ['capitalize', 'Capitalize']], get: el => csOf(el).textTransform, set: (el, v) => { el.style.textTransform = v; } }))
+      + prow('Line', fSel('td', { opts: [['none', 'None'], ['underline', 'Underline'], ['line-through', 'Strikethrough']], get: el => { const l = csOf(el).textDecorationLine; return l.includes('line-through') ? 'line-through' : l.includes('underline') ? 'underline' : 'none'; }, set: (el, v) => { el.style.textDecoration = v; } }));
+    return psec('Text', h, pbtn('textMore', ic('plus', 16), 'More text options', pp.textMore));
+  }
+
+  // Appearance
+  const CORN = ['TopLeft', 'TopRight', 'BottomRight', 'BottomLeft'];
+  const radPx = (el, c) => { const raw = csOf(el)['border' + CORN[c] + 'Radius'], v = parseFloat(raw) || 0; return Math.round(raw.includes('%') ? v / 100 * Math.min(el.offsetWidth, el.offsetHeight) : v); };
+  function setRad(el, c, v) { // c: corner 0-3, or -1 for all four
+    if (c < 0) el.style.borderRadius = v + 'px'; else el.style['border' + CORN[c] + 'Radius'] = v + 'px';
+    if (el.nodeName === 'TABLE') Object.assign(el.style, CORN.some((n, k) => radPx(el, k) > 0) ? { borderCollapse: 'separate', borderSpacing: '0', overflow: 'hidden' } : { borderCollapse: 'collapse', overflow: '' }); // radius needs separate borders
+  }
+  const bsOf = el => { const cs = csOf(el), s = cs.borderTopStyle; return parseFloat(cs.borderTopWidth) > 0 && s !== 'none' && s !== 'hidden' ? (s === 'dashed' || s === 'dotted' ? s : 'solid') : 'none'; };
+  function setBs(el, v) {
+    const w = parseFloat(csOf(el).borderTopWidth) || 0, hadColor = !!el.style.borderColor;
+    el.style.borderStyle = v;
+    if (v === 'none') return;
+    el.style.borderWidth = (w > 0 ? w : Math.max(1, Math.round(2 * U))) + 'px';
+    if (!hadColor) el.style.borderColor = DEF.line;
+  }
+  const bgField = () => fCol('bg', { none: true, grad: true, get: fillOf, img: el => csOf(el).backgroundImage, set: (el, c) => setBg(el, c) });
+  function secAppear(els) {
+    const sides = pp.sidesRad;
+    let h = prow('Background', bgField())
+      + prow('Opacity', fNum('op', { min: 0, max: 1, step: 0.05, get: el => r2(+csOf(el).opacity), set: (el, v) => { if (v >= 1) el.style.removeProperty('opacity'); else el.style.opacity = v; } }), fRange('op'))
+      + prow('Radius', sides ? '<span class="pp-fill"></span>' : fNum('rad', { min: 0, max: 999, get: el => { const v = CORN.map((n, c) => radPx(el, c)); return v.every(x => x === v[0]) ? v[0] : NaN; }, set: (el, v) => setRad(el, -1, v) }), pbtn('sidesRad', ic('radius', 16), 'Edit each corner', sides));
+    if (sides) h += `<div class="pp-sides">${CORN.map((n, c) => mini(['TL', 'TR', 'BR', 'BL'][c], fNum('rad' + c, { min: 0, max: 999, title: n, get: el => radPx(el, c), set: (el, v) => setRad(el, c, v) }))).join('')}</div>`;
+    h += prow('Border', fSeg('bs', { opts: [['none', 'None'], ['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']], get: bsOf, set: setBs }));
+    if (els.some(el => bsOf(el) !== 'none')) h += prow('Width', fNum('bw', { min: 0, max: 99, get: el => r2(parseFloat(csOf(el).borderTopWidth) || 0), set: (el, v) => { el.style.borderWidth = v + 'px'; } }))
+      + prow('Color', fCol('bc', { get: el => csOf(el).borderTopColor, set: (el, c) => { el.style.borderColor = c; } }));
+    return psec('Appearance', h);
+  }
+
+  // Effects: box-shadow rows and layer blur (filter: blur) rows
+  const splitTop = s => { const out = []; let d = 0, cur = ''; for (const ch of s) { if (ch === '(') d++; if (ch === ')') d--; if (ch === ',' && !d) { out.push(cur.trim()); cur = ''; } else cur += ch; } if (cur.trim()) out.push(cur.trim()); return out; };
+  function getFx(el) {
+    const cs = csOf(el), parts = cs.filter === 'none' ? [] : (cs.filter.match(/[a-z-]+[(][^)]*[)]/g) || []);
+    return {
+      sh: cs.boxShadow === 'none' ? [] : splitTop(cs.boxShadow).map(s => {
+        const col = (s.match(/rgba?[(][^)]*[)]/) || ['rgb(0, 0, 0)'])[0], n = (s.replace(col, '').match(/-?[0-9.]+/g) || []).map(Number);
+        return { x: n[0] || 0, y: n[1] || 0, blur: n[2] || 0, spread: n[3] || 0, color: col, inset: s.includes('inset') };
+      }),
+      bl: parts.filter(p => p.startsWith('blur(')).map(p => ({ blur: parseFloat(p.slice(5)) || 0 })),
+      other: parts.filter(p => !p.startsWith('blur(')).join(' '),
+    };
+  }
+  function setFx(el, fx, which) {
+    if (which === 'sh') el.style.boxShadow = fx.sh.length ? fx.sh.map(s => `${s.inset ? 'inset ' : ''}${s.color} ${s.x}px ${s.y}px ${s.blur}px ${s.spread}px`).join(', ') : 'none';
+    else el.style.filter = [...fx.bl.map(b => `blur(${b.blur}px)`), fx.other].filter(Boolean).join(' ') || 'none';
+  }
+  const fxF = (t, n, key, extra = {}) => fNum(`fx-${t}-${n}-${key}`, { step: 1, ...extra, get: el => getFx(el)[t][n]?.[key] ?? 0, set: (el, v) => { const fx = getFx(el); if (fx[t][n]) { fx[t][n][key] = v; setFx(el, fx, t); } } });
+  const fxRow = (t, n, title, inner) => `<div class="pp-fx"><div class="pp-fxh"><b>${title}</b>${pbtn('fxdel', ic('x', 14), 'Remove effect', false, `data-t="${t}" data-n="${n}"`)}</div>${inner}</div>`;
+  const fxUniform = els => { const a = JSON.stringify(getFx(els[0])); return els.every(el => JSON.stringify(getFx(el)) === a); };
+  function secFx(els) {
+    let h = pp.fxMenu ? '<div class="pp-menu"><button data-act="fxadd" data-t="sh">Shadow</button><button data-act="fxadd" data-t="bl">Blur</button></div>' : '';
+    if (!fxUniform(els)) h += '<div class="pp-muted">Mixed</div>';
+    else {
+      const fx = getFx(els[0]);
+      fx.sh.forEach((s, n) => { h += fxRow('sh', n, 'Shadow', `<div class="pp-sides">${mini('X', fxF('sh', n, 'x'))}${mini('Y', fxF('sh', n, 'y'))}${mini('B', fxF('sh', n, 'blur', { min: 0 }))}${mini('S', fxF('sh', n, 'spread'))}</div>`
+        + prow('Color', fCol(`fx-sh-${n}-color`, { get: el => getFx(el).sh[n]?.color ?? '', set: (el, c) => { const f2 = getFx(el); if (f2.sh[n]) { f2.sh[n].color = c; setFx(el, f2, 'sh'); } } }))); });
+      fx.bl.forEach((b, n) => { h += fxRow('bl', n, 'Blur', prow('Blur', fxF('bl', n, 'blur', { min: 0, max: 200 }))); });
+    }
+    return psec('Effects', h, pbtn('fxMenu', ic('plus', 16), 'Add effect', pp.fxMenu));
+  }
+
+  // Advanced
+  const xOf = el => el.style.left ? parseFloat(el.style.left) : el.offsetLeft;
+  const yOf = el => el.style.top ? parseFloat(el.style.top) : el.offsetTop;
+  const rotOf = el => { const m = csOf(el).transform; if (m === 'none') return 0; const v = m.match(/-?[0-9.e-]+/g).map(Number); return Math.round(Math.atan2(v[1], v[0]) * 18000 / Math.PI) / 100; };
+  const altAttr = el => el.nodeName === 'IMG' ? 'alt' : 'aria-label';
+  function setId(el, v) {
+    const id = v.trim().split(' ').join('-'), other = id && document.getElementById(id);
+    if (other && other !== el) return status('That id is already used');
+    if (id) el.id = id; else el.removeAttribute('id');
+  }
+  function secAdv(els) {
+    let h = '';
+    if (pp.adv) {
+      if (els.every(movable)) h += els.every(absPos)
+        ? prow('Position', mini('X', fNum('px', { min: -9999, max: 9999, get: xOf, set: (el, v) => { el.style.left = px(v); el.style.right = 'auto'; } })), mini('Y', fNum('py', { min: -9999, max: 9999, get: yOf, set: (el, v) => { el.style.top = px(v); el.style.bottom = 'auto'; } })))
+        : prow('Position', '<button class="pp-btn" data-act="pin" title="Pin to its spot so it can be placed with X and Y">Pin</button>');
+      if (els.every(el => kindOf(el) !== 'cell')) h += prow('Rotation', fNum('rot', { min: -360, max: 360, get: rotOf, set: (el, v) => { el.style.transform = v ? `rotate(${v}deg)` : ''; } }));
+      if (els.length === 1) h += prow('ID', fTxt('id', { get: el => el.id, set: setId }));
+      if (els.every(el => kindOf(el) === 'img')) h += prow('Alt text', fTxt('alt', { get: el => el.getAttribute(altAttr(el)) || '', set: (el, v) => el.setAttribute(altAttr(el), v) }));
+    }
+    return psec('Advanced', h, pbtn('adv', ic('right', 16), pp.adv ? 'Hide advanced' : 'Show advanced', pp.adv));
+  }
+  const KIND_NAMES = { slide: 'Slide', text: 'Text', cell: 'Table cell', table: 'Table', img: 'Image', group: 'Group', shape: 'Box' };
+  const LAYOUT_KINDS = ['text', 'cell', 'shape', 'slide'];
+
+  function ppRender(sg) {
+    const els = ppEls(), body = $('pp-body'), top = body.scrollTop, all = p => els.every(p);
+    pp.fields = {};
+    let h = '';
+    if (els.length === 1 && kindOf(els[0]) === 'slide') {
+      h = psec('Slide', prow('Background', bgField())) + secLayout(els, true)
+        + psec('Transition', prow('Transition', '<select class="pp-in" disabled title="Transitions come with the present options"><option>None</option></select>'));
+    } else {
+      h = secSize();
+      if (all(el => LAYOUT_KINDS.includes(kindOf(el)))) h += secLayout(els, all(container));
+      if (all(textual)) h += secText(els);
+      h += secAppear(els);
+      if (all(el => kindOf(el) !== 'cell')) h += secFx(els);
+      h += secAdv(els);
+    }
+    body.innerHTML = h; body.scrollTop = top; pp.sig = sg;
+  }
+  function ppSig(els) {
+    const ids = els.map(el => { if (!pp.map.has(el)) pp.map.set(el, ++pp.n); return pp.map.get(el); }).join('.');
+    if (ids !== pp.ids) { // a new selection opens the per-side rows when its sides differ
+      pp.ids = ids; pp.sidesPad = els.some(el => isNaN(padAll(el)));
+      pp.sidesRad = els.some(el => { const v = CORN.map((n, c) => radPx(el, c)); return v.some(x => x !== v[0]); });
+    }
+    const fx = fxUniform(els) ? getFx(els[0]) : null;
+    return [ids, els.map(kindOf).join(','), pp.sidesPad, pp.sidesRad, pp.adv, pp.textMore, pp.fxMenu, els.some(el => bsOf(el) !== 'none'), els.map(el => absPos(el) ? 'a' : 'f').join(''),
+      els.every(container), els.every(textual), fx ? fx.sh.length + ':' + fx.bl.length : 'x'].join('|');
+  }
+  function ppRefresh() {
+    if (!panelOpen() || presenting()) return;
+    const els = ppEls();
+    if (!els.length) return;
+    unfitText(); // read the authored sizes, not the shrunk ones
+    try {
+      const sg = ppSig(els);
+      if (sg !== pp.sig) ppRender(sg);
+      ppSync();
+      $('pp-title').textContent = els.length > 1 ? `${els.length} selected` : KIND_NAMES[kindOf(els[0])];
+    } finally { fitSlide(slides()[i]); }
+  }
+  function syncChrome() { // titles and pressed state of the panel and notes buttons follow the body classes
+    const pn = panelOpen(), nt = document.body.classList.contains('notes-open');
+    $('ed-pp').title = pn ? 'Hide properties' : 'Show properties'; $('ed-pp').classList.toggle('on', pn);
+    document.querySelectorAll('[data-cmd=notes]').forEach(b => { b.title = nt ? 'Hide speaker notes' : 'Show speaker notes'; b.classList.toggle('on', nt); });
+  }
+  // The panel button and the toolbar's dots toggle the panel (open / closed is remembered per viewer); on = true / false forces it.
+  function togglePanel(on) {
+    const open = document.body.classList.toggle('panel-open', on);
+    pref('panel', open ? '1' : '');
+    if (!open) { closePop(); pp.sig = ''; }
+    syncChrome(); fit();
+  }
+  // Speaker notes open under the slide, between the stage and the filmstrip.
+  function toggleNotes(on) {
+    const open = document.body.classList.toggle('notes-open', on);
+    pref('notes', open ? '1' : '');
+    syncChrome(); fit();
+  }
+
   function setNotes(text) {
     const s = slides()[i];
     let n = s.querySelector(':scope > aside.notes');
@@ -1062,10 +1439,11 @@
   async function save() {
     const doc = document.documentElement.cloneNode(true);
     doc.querySelectorAll('[data-chrome]').forEach(el => el.remove());
-    delete doc.dataset.theme; doc.style.removeProperty('--strip-h');
+    unfitIn(doc); // the file keeps the authored font sizes
+    delete doc.dataset.theme; doc.style.removeProperty('--strip-h'); doc.style.removeProperty('--nh');
     if (!doc.getAttribute('style')) doc.removeAttribute('style');
     const body = doc.querySelector('body');
-    body.classList.remove('panel-open', 'strip-closed', 'view-grid', 'presenting');
+    body.classList.remove('panel-open', 'notes-open', 'strip-closed', 'view-grid', 'presenting');
     if (!body.className) body.removeAttribute('class');
     doc.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
     doc.querySelectorAll('.slide').forEach(el => { el.style.removeProperty('zoom'); el.classList.remove('active'); if (!el.getAttribute('style')) el.removeAttribute('style'); });
@@ -1109,6 +1487,7 @@
     await Promise.all([load(LIBS.html2canvas), load(LIBS.jspdf)]);
     const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'px', format: [W, H], hotfixes: ['px_scaling'], compress: true });
     await eachSlideOffscreen(async (c, k) => {
+      fitSlide(c); // the picture shows the shrunk text like the screen
       const canvas = await html2canvas(c, { scale: 2560 / W, width: W, height: H, backgroundColor: '#ffffff', logging: false, useCORS: true });
       if (k) pdf.addPage([W, H], 'landscape');
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, W, H); // JPEG keeps the PDF small
@@ -1133,6 +1512,22 @@
   const isBlock = el => /^(block|flex|grid|list-item|table)/.test(getComputedStyle(el).display);
   const dataUrl = src => fetch(src).then(r => r.blob()).then(b => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }));
 
+  // PPTX helpers for what the panel writes: opacity, border style, shadow, rotation, letter spacing, case, strike.
+  const DASH = { dashed: 'dash', dotted: 'sysDot' };
+  const trans = (pct, o) => Math.round(100 - (100 - pct) * o); // pptx transparency from a colour's own transparency and the element's opacity
+  const opacityOf = el => { let o = 1; for (let n = el; n && n.nodeType === 1; n = n.parentElement) o *= parseFloat(getComputedStyle(n).opacity); return isNaN(o) ? 1 : o; };
+  const caseOf = (t, cs) => cs.textTransform === 'uppercase' ? t.toUpperCase() : cs.textTransform === 'lowercase' ? t.toLowerCase()
+    : cs.textTransform === 'capitalize' ? t.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : t;
+  const extraRun = (cs, el) => {
+    const o = opacityOf(el), ls = parseFloat(cs.letterSpacing);
+    return { ...(o < 1 ? { transparency: trans(0, o) } : {}), ...(ls ? { charSpacing: pt(ls) } : {}), ...(cs.textDecorationLine.includes('line-through') ? { strike: 'sngStrike' } : {}) };
+  };
+  const imgExtra = el => { const o = opacityOf(el), r = rotOf(el); return { ...(o < 1 ? { transparency: trans(0, o) } : {}), ...(r ? { rotate: r } : {}) }; };
+  function shapeExtra(el) { // rotation and the first outer shadow
+    const r = rotOf(el), s = getFx(el).sh.find(x => !x.inset), c = s && parseCss(s.color);
+    return { ...(r ? { rotate: r } : {}), ...(s ? { shadow: { type: 'outer', color: toHex(c[0], c[1], c[2]).slice(1).toUpperCase(), opacity: c[3], blur: Math.round(s.blur * PT * 10) / 10, offset: Math.round(Math.hypot(s.x, s.y) * PT * 10) / 10, angle: Math.round((Math.atan2(s.y, s.x) * 180 / Math.PI + 360) % 360) } } : {}) };
+  }
+
   function runsOf(block) {
     const runs = [];
     const walk = node => {
@@ -1141,7 +1536,7 @@
           const t = n.textContent.replace(/\s+/g, ' ');
           if (!t.trim() && !runs.length) continue;
           const cs = getComputedStyle(n.parentElement), link = n.parentElement.closest('a[href]');
-          runs.push({ text: t, options: { bold: +cs.fontWeight >= 600, italic: cs.fontStyle === 'italic', underline: cs.textDecorationLine.includes('underline') ? { style: 'sng' } : undefined, color: hex(cs.color), fontSize: pt(cs.fontSize), fontFace: face(cs, t), ...(link ? { hyperlink: { url: link.getAttribute('href') } } : {}) } });
+          runs.push({ text: caseOf(t, cs), options: { bold: +cs.fontWeight >= 600, italic: cs.fontStyle === 'italic', underline: cs.textDecorationLine.includes('underline') ? { style: 'sng' } : undefined, color: hex(cs.color), fontSize: pt(cs.fontSize), fontFace: face(cs, t), ...extraRun(cs, n.parentElement), ...(link ? { hyperlink: { url: link.getAttribute('href') } } : {}) } });
         } else if (n.nodeName === 'BR' || (n.nodeType === 1 && isBlock(n) && runs.length)) {
           if (runs.length) runs[runs.length - 1].options.breakLine = true;
           if (n.nodeType === 1 && n.nodeName !== 'BR') walk(n);
@@ -1166,12 +1561,12 @@
     // PowerPoint sets text slightly wider than the browser, so tight boxes get extra room on the side text grows into.
     const extra = b.w * 0.04;
     const x = align === 'right' ? b.x - extra : align === 'center' ? b.x - extra / 2 : b.x;
-    return { ...b, x, w: b.w + extra, margin: pad, valign, wrap: true, fit: 'none', align, ...(lh ? { lineSpacing: pt(lh) } : {}) };
+    return { ...b, x, w: b.w + extra, margin: pad, valign, wrap: true, fit: fitMode(el) === 'shrink' ? 'shrink' : 'none', ...(rotOf(el) ? { rotate: rotOf(el) } : {}), align, ...(lh ? { lineSpacing: pt(lh) } : {}) };
   }
 
   async function slideToPptx(p, c) {
     const o = c.getBoundingClientRect();
-    const box = el => { const r = el.getBoundingClientRect(); return { x: (r.left - o.left) / PX, y: (r.top - o.top) / PX, w: r.width / PX, h: r.height / PX }; };
+    const box = el => { const r = el.getBoundingClientRect(), rot = rotOf(el), w = rot ? el.offsetWidth : r.width, h = rot ? el.offsetHeight : r.height; return { x: (r.left + (r.width - w) / 2 - o.left) / PX, y: (r.top + (r.height - h) / 2 - o.top) / PX, w: w / PX, h: h / PX }; }; // a rotated box is placed by its centre
     const ps = p.addSlide();
     const scs = getComputedStyle(c);
     const sbg = clear(scs.backgroundColor) ? gradFirst(scs.backgroundImage) : scs.backgroundColor; // a gradient exports as its first colour
@@ -1186,13 +1581,13 @@
       const b = box(el);
       if (cs.display === 'none' || cs.visibility === 'hidden' || b.w <= 0 || b.h <= 0) { skipInside(el); continue; }
       if (el.nodeName === 'IMG') {
-        ps.addImage({ data: await dataUrl(el.currentSrc || el.src), ...b, ...(cs.objectFit === 'cover' ? { sizing: { type: 'cover', w: b.w, h: b.h } } : {}) });
+        ps.addImage({ data: await dataUrl(el.currentSrc || el.src), ...b, ...imgExtra(el), ...(cs.objectFit === 'cover' ? { sizing: { type: 'cover', w: b.w, h: b.h } } : {}) });
         continue;
       }
       if (el.matches('svg, canvas')) {
         skipInside(el);
         const canvas = await html2canvas(el, { scale: 2, backgroundColor: null, logging: false });
-        ps.addImage({ data: canvas.toDataURL('image/png'), ...b });
+        ps.addImage({ data: canvas.toDataURL('image/png'), ...b, ...imgExtra(el) });
         continue;
       }
       const bw = parseFloat(cs.borderTopWidth), bbw = parseFloat(cs.borderBottomWidth);
@@ -1204,8 +1599,9 @@
         const rr = Math.min(r / PX, b.w / 2, b.h / 2);
         ps.addShape(ellipse ? 'ellipse' : r ? 'roundRect' : 'rect', {
           ...b, ...(!ellipse && r ? { rectRadius: rr } : {}),
-          fill: clear(bg) ? { type: 'none' } : { color: hex(bg), transparency: alpha(bg) },
-          line: border ? { color: hex(cs.borderTopColor), width: pt(bw) } : { type: 'none' },
+          fill: clear(bg) ? { type: 'none' } : { color: hex(bg), transparency: trans(alpha(bg), opacityOf(el)) },
+          line: border ? { color: hex(cs.borderTopColor), width: pt(bw), transparency: trans(alpha(cs.borderTopColor), opacityOf(el)), ...(DASH[cs.borderTopStyle] ? { dashType: DASH[cs.borderTopStyle] } : {}) } : { type: 'none' },
+          ...shapeExtra(el),
         });
       }
       if (!border && bbw > 0 && cs.borderBottomStyle !== 'none' && !clear(cs.borderBottomColor)) {
@@ -1260,7 +1656,7 @@
   // --- commands + events ---
   const COMMANDS = {
     save, pdf: () => exportAs('pdf'), pptx: () => exportAs('pptx'), present: () => present(true),
-    panel: () => { document.body.classList.toggle('panel-open'); fit(); },
+    panel: () => togglePanel(), notes: () => toggleNotes(),
     strip: () => { const c = document.body.classList.toggle('strip-closed'); pref('strip-closed', c ? '1' : ''); fit(); if (!c) buildThumbs(); },
     theme: () => { const light = root.dataset.theme !== 'light'; light ? root.dataset.theme = 'light' : delete root.dataset.theme; pref('theme', light ? 'light' : 'dark'); },
     prev: () => show(i - 1), next: () => show(i + 1),
@@ -1306,6 +1702,16 @@
     const up = () => { bar.classList.remove('on'); removeEventListener('pointermove', mv); removeEventListener('pointerup', up); buildThumbs(); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up);
   });
+  $('ed-nresize').addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const bar = e.target; bar.classList.add('on');
+    const mv = ev => {
+      const h = Math.round(Math.min(Math.max($('ed-notesbox').getBoundingClientRect().bottom - ev.clientY, 60), innerHeight * 0.5));
+      root.style.setProperty('--nh', h + 'px'); pref('notes-h', h); fit();
+    };
+    const up = () => { bar.classList.remove('on'); removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up);
+  });
   stage.addEventListener('input', () => { markDirty(); refreshThumbs(); drawSel(); });
   document.addEventListener('keydown', e => {
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
@@ -1338,15 +1744,20 @@
   window.addEventListener('resize', fit);
 
   if (pref('strip-closed') === '1') document.body.classList.add('strip-closed');
+  if (pref('notes-h')) root.style.setProperty('--nh', pref('notes-h') + 'px');
+  if (pref('panel') === '1') document.body.classList.add('panel-open');
+  if (pref('notes') === '1') document.body.classList.add('notes-open');
+  syncChrome();
   // Hooks for the floating toolbars and the properties panel (later tasks): read the selection, listen to changes, run an edit with undo.
   window.DeckEditor = {
     get selection() { return sel.map(el => ({ el, kind: kindOf(el) })); },
     onSelectionChange: listeners, // push a fn(selection); called on every selection change
     get slide() { return slides()[i]; },
     kindOf, geom, exec,
+    openPanel: togglePanel, closePanel: () => togglePanel(false), get panelOpen() { return panelOpen(); }, // openPanel() toggles; openPanel(true) only opens
     change, // change(fn, key?): one undoable edit; calls with the same key within 0.8 s (a slider drag) share one undo step
   };
 
-  numberPages(); setView('single'); fit(); show(i);
-  document.fonts.ready.then(buildThumbs);
+  numberPages(); fitAll(); setView('single'); fit(); show(i);
+  document.fonts.ready.then(() => { fitAll(); fit(); buildThumbs(); });
 })();

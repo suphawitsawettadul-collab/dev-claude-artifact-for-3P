@@ -39,7 +39,7 @@ await b.key('z', { ctrl: true });
 const t2 = await b.ev(`document.querySelector('${h2}').textContent`);
 ok(t1 !== t2 && t2 === t0, 'Ctrl+Z after leaving edit restores pre-edit text', JSON.stringify([t0, t1, t2]));
 // notes undo
-await b.ev(`document.querySelector('[data-cmd=panel]').click()`);
+await b.ev(`document.querySelector('[data-cmd=notes]').click()`);
 await b.ev(`document.getElementById('ed-notes').focus()`);
 await b.type('note1');
 ok((await b.ev(`document.querySelector('.slide.active > aside.notes')?.textContent`)) === 'note1', 'notes typed');
