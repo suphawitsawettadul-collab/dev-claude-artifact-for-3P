@@ -40,3 +40,7 @@ The server listens on localhost only. A deck links `editor.css`, an optional des
 All groups of the gap list (`design-slide/design-slide-gap.md`) are built and covered by tests, apart from the points that file marks
 as partly done (connector routes and snapping, magic-move transitions, build animations). `node design-slide/test/run-all.mjs` runs every
 check (about 4 minutes; needs Chrome, Chromium or Edge, and `unzip` outside Windows; set `BROWSER` to a browser path if none is found).
+
+## Design Doc
+
+A local HTML document editor that stands in for Claude Docs in 3P mode: tabs, floating toolbar, `/` menu, tables, charts, diagrams, comment threads, version history and export to Word, PDF and Markdown. See `design-doc/README.md`; the skill is `skills/design-doc/`; tests: `node design-doc/test/run-all.mjs`.
