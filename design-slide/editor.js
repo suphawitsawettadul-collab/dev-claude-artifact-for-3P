@@ -4,10 +4,10 @@
 // Optional design system: a deck that loads a ds-*.js before this file (window.DECK_DS) gets its css, fonts, layouts and colours.
 // The deck file holds only its slides; everything this script adds is marked data-chrome and stripped on save.
 (() => {
-  const LIBS = {
-    html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-    jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-    pptx: 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
+  const LIBS = { // bundled in this folder (see lib-NOTICE.md), so exports work offline
+    html2canvas: 'lib-html2canvas.js',
+    jspdf: 'lib-jspdf.js',
+    pptx: 'lib-pptxgen.js',
   };
   const DS = window.DECK_DS || null;
   const BASIC_COLORS = { Black: '#1d2433', Grey: '#6b7280', Light: '#f3f4f6', Blue: '#0057a8', Sky: '#4a90e2', Green: '#1e8e5a', Orange: '#f59e0b', Red: '#c0392b', White: '#ffffff' };
@@ -159,9 +159,12 @@
       <div class="ed-menu"><button class="ed-title" data-menu><span>${esc(document.title)}</span>${ic('chevron', 16)}</button>
         <div class="items">
           <button data-cmd="save">Save <kbd>Ctrl+S</kbd></button>
+          <button data-cmd="rename">Rename</button>
           <button data-cmd="pdf">Export PDF</button>
+          <button data-cmd="html">Export web page</button>
           <button data-cmd="pptx">Export PowerPoint</button>
           <button data-cmd="present">Present <kbd>F5</kbd></button>
+          <button data-cmd="refresh">Refresh</button>
         </div></div>
       ${DS ? `<span class="ed-ds" title="Design system">${esc(DS.name)}</span>` : ''}
       <span class="grow"></span>
@@ -185,11 +188,11 @@
     </div>
     <div id="ed-tools-r" class="ed-group" data-chrome>
       <div class="ed-menu"><button data-menu id="ed-dl" title="Download">${ic('download')}</button>
-        <div class="items right"><button data-cmd="pdf">PDF (.pdf)</button><button data-cmd="pptx">PowerPoint (.pptx)</button></div></div>
+        <div class="items right"><button data-cmd="pdf">PDF (.pdf)</button><button data-cmd="html">Web page (.html)</button><button data-cmd="png">Current slide as image (.png)</button><button data-cmd="pptx">PowerPoint (.pptx)</button></div></div>
       <button data-cmd="present" title="Present (F5)">${ic('play')}</button>
       <button data-cmd="panel" id="ed-pp" title="Show properties">${ic('panel')}</button>
       <div class="ed-menu"><button data-menu id="ed-zoom">100%${ic('chevron', 14)}</button>
-        <div class="items right"><button data-zoom="fit">Fit</button><button data-zoom="0.25">25%</button><button data-zoom="0.5">50%</button><button data-zoom="0.75">75%</button><button data-zoom="1">100%</button></div></div>
+        <div class="items right"><button data-zoomstep="1">Zoom in <kbd>Ctrl+=</kbd></button><button data-zoomstep="-1">Zoom out <kbd>Ctrl+-</kbd></button><hr><button data-zoom="fit">Fit the slide</button><button data-zoom="0.25">25%</button><button data-zoom="0.5">50%</button><button data-zoom="0.75">75%</button><button data-zoom="1">100%</button><button data-zoom="1.5">150%</button><button data-zoom="2">200%</button></div></div>
     </div>
     <aside id="ed-panel" data-chrome><div class="pp-head"><b id="pp-title">Slide</b><button class="pp-x" data-cmd="panel" title="Close">${ic('x', 16)}</button></div><div id="pp-body"></div></aside><div id="ed-notesbox" data-chrome><div id="ed-nresize" title="Drag to resize"></div><textarea id="ed-notes" placeholder="Speaker notes"></textarea></div>
     <div id="ed-grid" data-chrome></div>
@@ -239,6 +242,11 @@
     $('ed-thumbs').querySelectorAll('.ed-thumb')[i]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     $('ed-notes').value = all[i]?.querySelector(':scope > aside.notes')?.textContent || '';
     select(null);
+  }
+  const ZOOMS = [0.25, 0.5, 0.75, 1, 1.5, 2];
+  function zoomStep(d) { // next preset above / below the zoom now on screen
+    const next = d > 0 ? ZOOMS.find(z => z > scale + 0.005) : [...ZOOMS].reverse().find(z => z < scale - 0.005);
+    if (next) { zoom = String(next); fit(); }
   }
   function setView(v) {
     document.body.classList.toggle('view-grid', v === 'grid');
@@ -389,7 +397,7 @@
   function pstep(d) { // present mode steps over skipped slides
     const all = slides(); let n = i + d;
     while (n >= 0 && n < all.length && skipped(all[n])) n += d;
-    if (n >= 0 && n < all.length) show(n);
+    if (n >= 0 && n < all.length) { document.body.classList.toggle('back', d < 0); show(n); }
   }
 
   function addSlide(layout) {
@@ -1492,7 +1500,7 @@
     let h = '';
     if (els.length === 1 && kindOf(els[0]) === 'slide') {
       h = psec('Slide', prow('Background', bgField())) + secLayout(els, true)
-        + psec('Transition', prow('Transition', '<select class="pp-in" disabled title="Transitions come with the present options"><option>None</option></select>'));
+        + psec('Transition', prow('Transition', fSel('tr', { opts: [['none', 'None'], ['fade', 'Fade'], ['push', 'Push']], get: el => el.dataset.transition || 'none', set: (el, v) => { if (v === 'none') delete el.dataset.transition; else el.dataset.transition = v; } })));
     } else {
       h = secSize();
       if (all(el => LAYOUT_KINDS.includes(kindOf(el)))) h += secLayout(els, all(container));
@@ -1594,14 +1602,15 @@
   });
 
   // Lays each slide out unscaled off screen, then hands it to fn(clone, k).
-  async function eachSlideOffscreen(fn) {
+  async function eachSlideOffscreen(fn, only) {
     await document.fonts.ready;
     const host = document.createElement('div');
     host.style.cssText = `position:fixed;left:-${W * 2}px;top:0;width:${W}px;height:${H}px;`;
     document.body.appendChild(host);
     try {
       for (const [k, s] of slides().entries()) {
-        if (skipped(s)) continue;
+        if (skipped(s) && only === undefined) continue;
+        if (only !== undefined && k !== only) continue;
         status(`Exporting ${k + 1}/${slides().length}`);
         const c = cleanClone(s);
         c.classList.add('active');
@@ -1695,6 +1704,18 @@
     return { ...b, x, w: b.w + extra, margin: pad, valign, wrap: true, fit: fitMode(el) === 'shrink' ? 'shrink' : 'none', ...(rotOf(el) ? { rotate: rotOf(el) } : {}), align, ...(lh ? { lineSpacing: pt(lh) } : {}) };
   }
 
+  // An inline <svg> as a PNG: serialised on its own (currentColor resolved), drawn on a canvas at 2x.
+  async function svgPng(el, cs) {
+    const r = el.getBoundingClientRect(), w = Math.max(1, Math.round(el.offsetWidth || r.width)), h = Math.max(1, Math.round(el.offsetHeight || r.height));
+    const c = el.cloneNode(true);
+    c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', w); c.setAttribute('height', h); c.removeAttribute('style');
+    const xml = new XMLSerializer().serializeToString(c).replace(/currentColor/g, cs.color);
+    const img = new Image();
+    await new Promise((ok, fail) => { img.onload = ok; img.onerror = () => fail(new Error('Could not draw an svg')); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml); });
+    const cv = document.createElement('canvas'); cv.width = w * 2; cv.height = h * 2;
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    return cv.toDataURL('image/png');
+  }
   const PPT_SHAPE = { diamond: 'diamond', 'arrow-right': 'rightArrow', 'arrow-left': 'leftArrow', 'arrow-up': 'upArrow', 'arrow-down': 'downArrow' };
   async function slideToPptx(p, c) {
     const o = c.getBoundingClientRect();
@@ -1718,8 +1739,8 @@
       }
       if (el.matches('svg, canvas')) {
         skipInside(el);
-        const canvas = await html2canvas(el, { scale: 2, backgroundColor: null, logging: false });
-        ps.addImage({ data: canvas.toDataURL('image/png'), ...b, ...imgExtra(el) });
+        const data = el.nodeName === 'svg' ? await svgPng(el, cs) : (await html2canvas(el, { scale: 2, backgroundColor: null, logging: false })).toDataURL('image/png');
+        ps.addImage({ data, ...b, ...imgExtra(el) });
         continue;
       }
       if (el.dataset.shape === 'connector') { // a line with an arrow head (the head is the ::after triangle)
@@ -1774,24 +1795,69 @@
     return p.write({ outputType: 'blob' });
   }
 
+  function renameDeck() { // the title menu's Rename: an input takes the place of the title until Enter, Esc or blur
+    const menu = document.querySelector('#ed-head .ed-menu'), inp = Object.assign(document.createElement('input'), { className: 'ed-rename', value: document.title });
+    let done = false;
+    const end = ok => {
+      if (done) return; done = true;
+      const v = inp.value.trim();
+      if (ok && v && v !== document.title) { document.title = v; menu.querySelector('.ed-title span').textContent = v; markDirty(); }
+      inp.remove(); menu.style.display = '';
+    };
+    inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') end(true); else if (e.key === 'Escape') end(false); };
+    inp.onblur = () => end(true);
+    menu.style.display = 'none'; menu.after(inp); inp.focus(); inp.select();
+  }
+  // PNG of the current slide, and a stand-alone web page of the deck (slides without the editor, arrow keys / click to page through).
+  async function toPng() {
+    await load(LIBS.html2canvas);
+    let blob;
+    await eachSlideOffscreen(async c => {
+      fitSlide(c);
+      const canvas = await html2canvas(c, { scale: 2, width: W, height: H, backgroundColor: '#ffffff', logging: false, useCORS: true });
+      blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    }, i);
+    return blob;
+  }
+  async function toHtml() {
+    await document.fonts.ready;
+    const parts = [];
+    for (const [k, sl] of slides().entries()) {
+      if (skipped(sl)) continue;
+      const c = cleanClone(sl); c.classList.remove('active');
+      for (const im of c.querySelectorAll('img')) { const u = im.currentSrc || im.src; if (u && !u.startsWith('data:')) { try { im.src = await dataUrl(u); } catch {} } }
+      parts.push(c.outerHTML);
+    }
+    const own = [...document.head.querySelectorAll('style:not([data-chrome]), link[rel=stylesheet]:not([href$="editor.css"])')].map(n => n.outerHTML).join('\n');
+    const dsCss = DS ? `${(DS.fonts || []).map(f => `<link rel="stylesheet" href="${f}">`).join('')}<style>${DS.css || ''}</style>` : '';
+    const trans = '@keyframes tr-fade{from{opacity:0}to{opacity:1}}@keyframes tr-push{from{transform:translateX(10%);opacity:0}to{transform:none;opacity:1}}.slide.on[data-transition=fade]{animation:tr-fade .5s ease}.slide.on[data-transition=push]{animation:tr-push .45s ease}';
+    const css = `html,body{margin:0;height:100%;background:#111;overflow:hidden}#vw{position:absolute;left:0;top:0;width:${W}px;height:${H}px;transform-origin:0 0}.slide{display:none;position:relative;flex-direction:column;flex:none;width:${W}px;height:${H}px;overflow:hidden;background:#fff}.slide.on{display:flex}${trans}`;
+    const js = `(()=>{const W=${W},H=${H},s=[...document.querySelectorAll('.slide')],v=document.getElementById('vw');let i=Math.max(0,Math.min(s.length-1,(parseInt(location.hash.slice(1))||1)-1));
+const fit=()=>{const k=Math.min(innerWidth/W,innerHeight/H);v.style.transform='translate('+(innerWidth-W*k)/2+'px,'+(innerHeight-H*k)/2+'px) scale('+k+')'};
+const show=n=>{i=Math.max(0,Math.min(s.length-1,n));s.forEach((e,k)=>e.classList.toggle('on',k===i));history.replaceState(null,'','#'+(i+1))};
+addEventListener('keydown',e=>{if(['ArrowRight','ArrowDown','PageDown',' ','Enter'].includes(e.key))show(i+1);else if(['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(e.key))show(i-1)});
+document.addEventListener('click',e=>show(i+(e.clientX<innerWidth/4?-1:1)));addEventListener('resize',fit);fit();show(i)})();`;
+    return new Blob([`<!doctype html>\n<html lang="${document.documentElement.lang || 'en'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(document.title)}</title>\n${own}\n${dsCss}<style>${css}</style></head><body><div id="vw">${parts.join('\n')}</div><script>${js}<\/script></body></html>`], { type: 'text/html' });
+  }
   async function exportAs(fmt) {
     $('ed-dl').disabled = true;
     try {
       select(null); document.activeElement?.blur?.();
-      const blob = fmt === 'pdf' ? await toPdf() : await toPptx();
-      const name = `${base}.${fmt}`;
+      const blob = fmt === 'pdf' ? await toPdf() : fmt === 'html' ? await toHtml() : fmt === 'png' ? await toPng() : await toPptx();
+      const name = fmt === 'html' ? `${base}-web.html` : fmt === 'png' ? `${base}-slide-${i + 1}.png` : `${base}.${fmt}`;
       await post(name, blob);
       // Also offer a browser download where the host allows it.
       const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       status(`Exported ${name}`);
-    } catch (e) { status('Export failed: ' + e.message); }
+    } catch (e) { console.error(e); status('Export failed: ' + (e?.message || e)); }
     finally { $('ed-dl').disabled = false; }
   }
 
   // --- commands + events ---
   const COMMANDS = {
-    save, pdf: () => exportAs('pdf'), pptx: () => exportAs('pptx'), present: () => present(true),
+    save, pdf: () => exportAs('pdf'), pptx: () => exportAs('pptx'), html: () => exportAs('html'), png: () => exportAs('png'), present: () => present(true),
+    refresh: () => location.reload(), rename: () => renameDeck(),
     panel: () => togglePanel(), notes: () => toggleNotes(),
     strip: () => { const c = document.body.classList.toggle('strip-closed'); pref('strip-closed', c ? '1' : ''); fit(); if (!c) buildThumbs(); },
     theme: () => { const light = root.dataset.theme !== 'light'; light ? root.dataset.theme = 'light' : delete root.dataset.theme; pref('theme', light ? 'light' : 'dark'); },
@@ -1810,11 +1876,12 @@
     document.querySelectorAll('.ed-menu.open').forEach(m => { if (m !== keep) m.classList.remove('open'); });
     if (menuBtn) { keep.classList.toggle('open'); if (keep.id === 'ed-add' && keep.classList.contains('open')) buildGallery(); if (keep.id === 'ed-icons-menu' && keep.classList.contains('open')) buildIcons(); return; }
     // Only editor chrome carries commands; slide content may use the same attribute names (e.g. data-layout).
-    const t = e.target.closest('[data-chrome] :is([data-cmd], [data-zoom], [data-view], [data-add])');
+    const t = e.target.closest('[data-chrome] :is([data-cmd], [data-zoom], [data-zoomstep], [data-view], [data-add])');
     if (!t) return;
     t.closest('.ed-menu')?.classList.remove('open');
     if (t.dataset.cmd) COMMANDS[t.dataset.cmd]?.();
     else if (t.dataset.zoom) { zoom = t.dataset.zoom; fit(); }
+    else if (t.dataset.zoomstep) zoomStep(+t.dataset.zoomstep);
     else if (t.dataset.view) setView(t.dataset.view);
     else if (t.dataset.add !== undefined) addSlide(t.dataset.add);
   });
@@ -1857,6 +1924,7 @@
   document.addEventListener('keydown', e => {
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (mod && k === 's') { e.preventDefault(); save(); return; }
+    if (mod && !presenting() && (k === '=' || k === '+' || k === '-')) { e.preventDefault(); zoomStep(k === '-' ? -1 : 1); return; }
     if (presenting()) {
       if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) pstep(1);
       else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) pstep(-1);

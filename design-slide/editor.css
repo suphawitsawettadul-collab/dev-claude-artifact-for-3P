@@ -226,3 +226,12 @@ body.presenting #ed-tb, body.presenting #ed-pop, body.view-grid #ed-tb, body.vie
 .ed-menu .items.icons { width: 300px; padding: 8px; }
 .icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-height: 50vh; overflow: auto; }
 .ed-menu .items.icons button { width: auto; height: 40px; padding: 0; justify-content: center; align-items: center; }
+
+/* F: transitions while presenting, rename field */
+@keyframes tr-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tr-push { from { transform: translateX(10%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes tr-push-back { from { transform: translateX(-10%); opacity: 0; } to { transform: none; opacity: 1; } }
+body.presenting .slide.active[data-transition=fade] { animation: tr-fade .5s ease; }
+body.presenting .slide.active[data-transition=push] { animation: tr-push .45s ease; }
+body.presenting.back .slide.active[data-transition=push] { animation-name: tr-push-back; }
+.ed-rename { font: inherit; font-size: 15px; height: 30px; width: 260px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--accent); background: var(--bg); color: var(--ink); }
