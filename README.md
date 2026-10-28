@@ -1,55 +1,56 @@
 # dev-claude-artifact-for-3P
 
-สองเครื่องมือนี้เป็น **clone ของ Claude Artifact แบบ Slides และ Docs** สำหรับใช้กับ **Claude 3P mode** ซึ่งไม่มี artifact ชนิดเหล่านี้ให้ใช้
-ทำงานเหมือนกัน: สั่ง "create slides" หรือ "create a document" แล้ว Claude เขียนไฟล์ จากนั้นเปิดใน editor ในเครื่อง แก้ได้เหมือนบน claude.ai
-แล้ว export ได้ ไฟล์อยู่ในเครื่องของคุณ ไม่มีการแชร์ออกไป และใช้ **Design System ของตัวเองได้** (ดูหัวข้อด้านล่าง)
+These two tools are **clones of Claude's Slides and Docs artifacts** for use in **Claude 3P mode**, where those artifact types are not available.
+They work the same way: ask Claude to "create slides" or "create a document", Claude writes the file, and it opens in a local editor where you
+edit it like on claude.ai and then export it. Files stay on your computer, nothing is shared, and you can **use your own design system**
+(see below).
 
-| เครื่องมือ | ใช้แทน | โฟลเดอร์ | Skill |
+| Tool | Replaces | Folder | Skill |
 |---|---|---|---|
 | Design Slide | Claude Slides | `design-slide/` | `skills/design-slide/` |
 | Design Doc | Claude Docs | `design-doc/` | `skills/design-doc/` |
 
-## หน้าตาของเครื่องมือ
+## What the tools look like
 
-**Design Slide** (ตัวอย่างใช้ Thai Union design system)
+**Design Slide** (sample deck using the Thai Union design system)
 
 ![Design Slide](docs/screenshots/design-slide-editor.png)
 
-**Design Doc** (เอกสารหลายแท็บ, diagram, ตาราง, Comments / History / Export)
+**Design Doc** (multi-tab document with diagram, table, Comments / History / Export)
 
 ![Design Doc](docs/screenshots/design-doc-editor.png)
 
-## เริ่มใช้งานเร็ว
+## Quick start
 
-ต้องมี Node.js และ Chrome, Chromium หรือ Edge ในเครื่อง
+Needs Node.js and Chrome, Chromium or Edge.
 
 ```bash
-# Slide: เปิดเด็คตัวอย่าง (รูปแบบไฟล์เดียวกับ Claude Slides)
+# Slides: open the sample deck (same file format as Claude Slides)
 node design-slide/open-deck.mjs design-slide/examples/slides-format --ds tu
 
-# Doc: เปิดเอกสารตัวอย่าง
-node design-doc/open-doc.mjs design-doc/examples/proposal --ds tu --byline "ชื่อคุณ"
+# Docs: open the sample document
+node design-doc/open-doc.mjs design-doc/examples/proposal --ds tu --byline "Your name"
 ```
 
-คำสั่งจะพิมพ์ `OPEN: http://localhost:...` ให้เปิดใน browser pane ของ Claude desktop (หรือ browser ทั่วไป)
+Each command prints `OPEN: http://localhost:...`; open that address in the Claude desktop browser pane (or any browser).
 
-## ใช้ใน Claude 3P
+## Use in Claude 3P
 
-คัดลอก `skills/design-slide/` และ `skills/design-doc/` ไปไว้ที่ `~/.claude/skills/` แล้วตั้ง `DESIGN_SLIDE_DIR` / `DESIGN_DOC_DIR`
-เป็นพาธเต็มของโฟลเดอร์ `design-slide/` / `design-doc/` ใน repo นี้ หลังจากนั้นสั่ง "create slides" หรือ "create a document"
-Claude จะใช้กติกาออกแบบเดียวกับ Claude Slides/Docs แต่เปิดผลลัพธ์ใน Design Slide / Design Doc แทน
+Copy `skills/design-slide/` and `skills/design-doc/` to `~/.claude/skills/`, and set `DESIGN_SLIDE_DIR` / `DESIGN_DOC_DIR` to the full path of
+this repo's `design-slide/` / `design-doc/` folder. Then ask for "create slides" or "create a document": Claude follows the same design rules
+as Claude Slides/Docs but opens the result in Design Slide / Design Doc.
 
-## สร้าง Design System ของตัวเอง
+## Create your own design system
 
-Design System คือไฟล์ JavaScript เล็กๆ ที่เครื่องมือโหลดก่อน `editor.js` ตัวอย่างคือ Thai Union (`ds-tu.js`, เรียกด้วย `--ds tu`)
+A design system is a small JavaScript file that the tool loads before `editor.js`. The example is Thai Union (`ds-tu.js`, used with `--ds tu`).
 
-1. Slide: คัดลอก `design-slide/ds-tu.js` เป็น `design-slide/ds-<ชื่อ>.js` แล้วแก้ `window.DECK_DS`: `name`, `width/height`, `fonts`,
-   `colors`, `textStyles`, `css` และ `layouts` (layout ที่ขึ้นในปุ่ม "+")
-2. Doc: คัดลอก `design-doc/ds-tu.js` เป็น `design-doc/ds-<ชื่อ>.js` แล้วแก้ `window.DOC_DS`: `name`, `fonts`, `colors`, `chart`, `css`
-3. เปิดด้วย `--ds <ชื่อ>` เช่น `node design-slide/open-deck.mjs <โฟลเดอร์เด็ค> --ds acme`
+1. Slides: copy `design-slide/ds-tu.js` to `design-slide/ds-<name>.js` and edit `window.DECK_DS`: `name`, `width/height`, `fonts`,
+   `colors`, `textStyles`, `css` and `layouts` (the layouts offered by the "+" button).
+2. Docs: copy `design-doc/ds-tu.js` to `design-doc/ds-<name>.js` and edit `window.DOC_DS`: `name`, `fonts`, `colors`, `chart`, `css`.
+3. Open with `--ds <name>`, for example `node design-slide/open-deck.mjs <deck folder> --ds acme`.
 
-หมายเหตุตรงๆ: ตอนนี้ยังไม่มีตัวช่วยสร้าง design system อัตโนมัติ ต้องเขียนไฟล์ `ds-*.js` เอง (หรือให้ Claude เขียนจาก brand guide ให้)
-และผมยังไม่ได้ทดสอบกับ design system ที่ไม่ใช่ Thai Union
+To be upfront: there is no generator for design systems yet, so the `ds-*.js` file has to be written by hand (or by Claude from a brand
+guide), and it has only been tested with the Thai Union design system.
 
 ---
 

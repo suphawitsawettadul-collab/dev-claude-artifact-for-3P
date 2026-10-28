@@ -68,7 +68,7 @@ export function mdToSections(md) {
 }
 export function docHtml({ title, byline = '', date = '', md, ds }) {
   return `<!doctype html>
-<html lang="th"><head>
+<html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Design Doc: ${esc(title)}</title>
