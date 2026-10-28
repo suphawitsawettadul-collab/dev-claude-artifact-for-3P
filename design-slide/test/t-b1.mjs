@@ -1,0 +1,46 @@
+// B1 text toolbar: placement and follow behaviour.
+import { start, ok } from './t-lib.mjs';
+import * as L from './t-lib.mjs';
+import * as H from './t-bh.mjs';
+await start('http://localhost:' + process.env.PORT + '/tu-test.html#4');
+const b = L.b;
+const near = (a, c, t = 2) => Math.abs(a - c) <= t;
+ok(!(await H.tb()).on, 'no toolbar without a selection');
+await L.clickOn('.slide.active .tu-body ul');
+let t = await H.tb(), e = await H.rect('.slide.active .tu-body ul');
+ok(t.on && near(t.t + t.h, e.t - 12) && near(t.l + t.w / 2, e.l + e.w / 2), 'toolbar centred above the selection, 12px gap', JSON.stringify([t, e]));
+ok(t.ids.join() === 'style,tcolor,bold,italic,underline,link,list,align,more' && t.titles, 'text toolbar buttons, all with a tooltip', t.ids.join());
+await L.clickOn('.slide.active .tu-title');
+t = await H.tb(); e = await H.rect('.slide.active .tu-title');
+const st = await H.rect('#stage');
+ok(t.on && t.t >= e.b + 8 && t.t >= st.t && t.t + t.h <= st.b, 'flips below when there is no room above (and stays in the stage)', JSON.stringify([t, e]));
+await b.ev(`document.querySelector('[data-zoom="0.5"]').click()`); await b.sleep(150);
+t = await H.tb(); e = await H.rect('.slide.active .tu-title');
+ok(t.on && near(t.l + t.w / 2, e.l + e.w / 2, 3), 'toolbar follows zoom', JSON.stringify([t, e]));
+await b.ev(`document.querySelector('[data-zoom="fit"]').click()`); await b.sleep(150);
+const [x, y] = await L.at('.slide.active .tu-title', -300, 0);
+await b.mouse('mouseMoved', x, y); await b.mouse('mousePressed', x, y, { button: 'left', buttons: 1, clickCount: 1 });
+for (let k = 1; k <= 4; k++) await b.mouse('mouseMoved', x + 12 * k, y + 20 * k, { buttons: 1 });
+ok(!(await H.tb()).on, 'toolbar hidden while dragging');
+await b.mouse('mouseReleased', x + 48, y + 80, { button: 'left', clickCount: 1 });
+ok((await H.tb()).on, 'toolbar back after the drag');
+await H.undo(); await L.clickOn('.slide.active .tu-title'); // undo clears the selection
+await b.ev(`document.querySelector('[data-view=grid]').click()`); await b.sleep(150);
+ok(!(await H.tb()).on, 'hidden in grid view');
+await b.ev(`document.querySelector('[data-view=single]').click()`); await b.sleep(150);
+ok((await H.tb()).on, 'back in single view');
+await b.ev(`document.querySelector('[data-cmd=present]').click()`); await b.sleep(200);
+ok(!(await H.tb()).on, 'hidden while presenting');
+await b.key('Escape', { code: 'Escape', vk: 27 }); await b.sleep(200);
+await L.clickOn('.slide.active .tu-body ul');
+await L.clickOn('.slide.active .tu-sub', { modifiers: 8 }, 300, 0);
+t = await H.tb(); e = await H.rect('.slide.active .tu-sub');
+ok(t.on && near(t.l + t.w / 2, e.l + e.w / 2, 3) && await b.ev(`document.querySelectorAll('#ed-tb').length`) === 1, 'multi-select: one toolbar on the last selected', JSON.stringify([t, e]));
+// scroll: toolbar follows when the stage scrolls
+await L.esc(); await b.ev(`document.querySelector('[data-zoom="1"]').click()`); await b.sleep(200);
+await L.clickOn('.slide.active .tu-sub'); const t0 = await H.tb();
+await b.ev(`document.getElementById('stage').scrollTop = 120`); await b.sleep(150);
+const t1 = await H.tb(), e1 = await H.rect('.slide.active .tu-sub');
+ok(t1.on && near(t1.l + t1.w / 2, e1.l + e1.w / 2, 3) && (near(t1.t + t1.h, e1.t - 12) || near(t1.t, e1.b + 12)) && Math.abs(e1.t - t0.t) > 20, 'toolbar follows scroll (flips below at the stage top)', JSON.stringify([t0, t1, e1]));
+console.log(b.logs.join('\n')); console.log('B1 placement done', L.passes, 'pass', L.fails, 'fail');
+await b.close();
