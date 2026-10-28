@@ -4,7 +4,7 @@ import * as L from './t-lib.mjs';
 import * as H from './t-bh.mjs';
 await start('http://localhost:' + process.env.PORT + '/deck.html#1');
 const b = L.b, H1 = '.slide.active h1';
-ok(await b.ev(`[...document.querySelectorAll('#ed-tools-l > button, #ed-tools-l > .ed-menu > button')].map(x => x.title).join('|')`) === 'Text box|Image|Table|Shapes', 'top toolbar keeps only T, image, table, shapes');
+ok(await b.ev(`[...document.querySelectorAll('#ed-tools-l > button, #ed-tools-l > .ed-menu > button')].map(x => x.title).join('|')`) === 'Text box|Image|Table|Shapes|Icons', 'top toolbar keeps T, image, table, shapes, icons');
 ok(await b.ev(`document.querySelector('.ed-swatches') === null && document.querySelector('[data-color]') === null`), 'old colour menu is gone');
 await L.clickOn(H1);
 ok((await b.ev(`document.querySelector('#ed-tb [data-tb=style]').textContent`)).includes('Title'), 'built-in style Title (64/700) recognised');

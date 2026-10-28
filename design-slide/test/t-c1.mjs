@@ -38,7 +38,7 @@ await L.esc();
 const [sx, sy, sw, sh] = await L.sc();
 await b.click(sx + sw * 0.15, sy + sh * 0.75);
 ok((await L.S())[0].startsWith('slide:') && await C.title() === 'Slide' && await C.has('[data-pp=bg]'), 'slide selected: slide properties with Background');
-ok(await b.ev(`document.querySelector('#pp-body select[disabled]') !== null`), 'Transition placeholder row');
+ok((await b.ev(`[...document.querySelectorAll('#pp-body [data-pp=tr] option')].map(o => o.value).join()`)).startsWith('none,fade,push'), 'Transition row with None, Fade, Push');
 await b.ev('setTimeout(() => location.reload(), 10)'); await b.sleep(2500);
 ok(await b.ev('DeckEditor.panelOpen') && await b.ev(`localStorage.getItem('deck-ed:panel')`) === '1', 'open state remembered in localStorage');
 await L.clickOn('#ed-panel .pp-x');

@@ -30,6 +30,17 @@ try {
   ok((await L.S())[0]?.startsWith('shape:') || (await L.S())[0]?.length > 0, 'the shape from x-shape is selectable', JSON.stringify(await L.S()));
   await L.esc();
   await b.key('s', { ctrl: true }); await b.sleep(800);
+  // export the opened deck as PowerPoint: 3 slides, the icon as a picture, notes kept
+  await b.ev(`document.querySelector('[data-cmd=pptx]').click()`);
+  const pptx = path.join(dir, 'deck.pptx');
+  for (let k = 0; k < 90 && !fs.existsSync(pptx); k++) await b.sleep(500);
+  ok(fs.existsSync(pptx), 'pptx exported from an opened deck', await b.ev(`document.getElementById('ed-status').textContent`));
+  if (fs.existsSync(pptx)) {
+    const x = path.join(dir, 'pptx-x'); fs.mkdirSync(x);
+    const u = process.platform === 'win32' ? spawnSync('C:/Windows/System32/tar.exe', ['-xf', pptx, '-C', x]) : spawnSync('unzip', ['-q', '-o', pptx, '-d', x]);
+    ok(u.status === 0 && fs.readdirSync(path.join(x, 'ppt/slides')).filter(f => f.endsWith('.xml')).length === 3 && fs.readdirSync(path.join(x, 'ppt/media')).length >= 1 && /one-line summary/.test(fs.readFileSync(path.join(x, 'ppt/notesSlides/notesSlide1.xml'), 'utf8')), 'pptx has 3 slides, the icon picture and the speaker notes');
+    fs.rmSync(x, { recursive: true, force: true });
+  }
   const saved = fs.readFileSync(path.join(dir, 'deck.html'), 'utf8');
   ok(/Quarterly review Q4|Q4/.test(saved.match(/<h1[^>]*>[^<]*/)[0]), 'edit saved into deck.html', saved.match(/<h1[^>]*>[^<]*/)?.[0]);
   ok(fs.existsSync(path.join(dir, 'deck.html.bak')), 'previous version kept as .bak');

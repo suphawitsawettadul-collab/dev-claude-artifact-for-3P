@@ -22,37 +22,41 @@ Source: Slides type docs (format.md, styles.md, layout.md, view-state.md, diagra
 
 Group B notes (editor.js, section "floating toolbars"): one `#ed-tb` for the last selected element, popovers in `#ed-pop`; every edit runs through `DeckEditor.change(fn, key)`, and calls with the same key within 0.8 s (slider or picker drag) share one undo step. Text styles live in the design system file as `textStyles`; without one the editor uses Title / Heading / Subheading / Body / Caption scaled by slide width / 1280. PPTX export reads the result: colour and font runs, `<b> <i> <u>`, hyperlink on `<a href>`, a gradient exports as its first colour.
 
-## C. Properties panel (⋯ or the panel button, top right)
-Size (W, H with Fill / Hug / Fixed), Layout (padding), Text (style, font, weight, size, line height, letter spacing, colour,
-align, resize = shrink text to fit), Appearance (background, opacity, radius, border none/solid/dashed/dotted),
-Effects (+ shadow …), Advanced. Design Slide: none (its panel button opens notes).
+## C. Properties panel (⋯ in the toolbar or the panel button, top right)
+Have (group C, tests t-c1 and t-c2): Size (W, H with Fill / Hug / Fixed), Layout (padding, per side; direction, gap, align, justify on
+containers), Text (style, font, weight, size, line height, letter spacing, colour, align, resize = shrink to fit, + case / line),
+Appearance (background, opacity, radius per corner, border none / solid / dashed / dotted with width and colour), Effects (+ shadow,
+blur), Advanced (X / Y or Pin, rotation, id, alt text). Slide selected: background, layout, transition. The panel follows the selection
+live, every edit is one undo step, and speaker notes open under the slide (book button).
 
 ## D. Insert
 | # | Claude Slides | Design Slide |
 |---|---|---|
-| D1 | Shapes menu with keys: Rectangle R, Rounded Shift+R, Ellipse O, Diamond D, Arrow right/left/up/down, Line L, Connector Shift+L | Rect, rounded, ellipse, line; no keys |
-| D2 | Connector: snaps to edge midpoints/corners, heads none/open/filled, route straight/hv/vh/elbow, dashed | None |
-| D3 | Icons (`x-icon`, 30 names) | None |
+| D1 | Shapes menu with keys: Rectangle R, Rounded Shift+R, Ellipse O, Diamond D, Arrow right/left/up/down, Line L, Connector Shift+L | Have: all ten, same keys; PPTX exports diamond and arrows as native shapes |
+| D2 | Connector: snaps to edge midpoints/corners, heads none/open/filled, route straight/hv/vh/elbow, dashed | Partly: Shift+L inserts a straight connector with a filled arrow head (exports as a PowerPoint line with an arrow). No snapping, routes or head choice yet. |
+| D3 | Icons (`x-icon`, 30 names) | Have: Icons menu, 30 names in `icons.js`; `<x-icon>` in a Slides-format deck becomes the same svg |
 | D4 | Text T, Image, Table buttons | Have |
 
 ## E. Slides and filmstrip
 | # | Claude Slides | Design Slide |
 |---|---|---|
-| E1 | "+" opens a New slide gallery with previews: Blank, Title, Section, Title + body, Key points, Compare, Bullets, Two columns, Table, Quote, Image + caption, Closing | Text menu of DS layouts |
-| E2 | Thumbnail ⋯ menu: Duplicate slide, Copy slide, Copy link to slide, Skip slide, Set as thumbnail, Add slide after, Move left, Move right, Delete slide | Hover dup / delete, drag |
-| E3 | Speaker notes open UNDER the slide (book icon "Show speaker notes") | Side panel |
-| E4 | Grid ("Canvas") view: slides in rows by section, section description on each row, zoomable | Flat grid |
-| E5 | Skip slide (`hidden`) | None |
-| E6 | Multi-select slides in the strip | None |
+| E1 | "+" opens a New slide gallery with previews | Have: gallery of scaled previews (Blank + 11 layouts, or the design system's layouts); a new slide takes the look of the current one |
+| E2 | Thumbnail ⋯ menu | Have: Duplicate slide, Skip slide, Add slide after, Move left, Move right, Delete slide (no "Copy slide / Copy link / Set as thumbnail") |
+| E3 | Speaker notes open UNDER the slide | Have |
+| E4 | Grid view in rows by section, section description on each row | Have: `data-section` on a section's first slide (open-deck.mjs fills it from deck.json). No zoom. |
+| E5 | Skip slide | Have: skipped in present, PDF, PPTX, PNG and the web page; dimmed in the strip |
+| E6 | Multi-select slides in the strip | Have: Ctrl / Shift click, then duplicate, skip or delete the pick |
 
 ## F. View, present, export
 | # | Claude Slides | Design Slide |
 |---|---|---|
-| F1 | Zoom menu: Zoom in Ctrl+, Zoom out Ctrl−, Fit the slide, Now N%, 25–200 %, Undo, Redo | Fit, 25–100 % |
-| F2 | Download: PDF, Web page (.html), Current slide as image (.png), PowerPoint current fonts, PowerPoint basic fonts | PDF, PPTX |
-| F3 | Present: transitions fade / push / magic; build-in / build-out fade / rise / drop / left / right / scale / pop with order | Plain present |
-| F4 | Title menu: Export, Rename, Duplicate, Share, Permissions, Refresh, Pin, Storage, Delete | Save, export, present |
-| F5 | Text shrinks to fit an over-full box (60 % floor) | None |
+| F1 | Zoom menu: Zoom in Ctrl+, Zoom out Ctrl−, Fit, 25–200 % | Have (no Undo / Redo rows in the menu) |
+| F2 | Download: PDF, Web page (.html), Current slide (.png), PowerPoint | Have: PDF, web page (stand-alone, arrow keys), PNG (2x), PPTX. One PowerPoint variant only. |
+| F3 | Present: transitions fade / push / magic; builds | Partly: Fade and Push per slide (slide properties, also in the web page). No magic move, no builds. |
+| F4 | Title menu: Export, Rename, Duplicate, Share, Permissions, Refresh, Pin, Storage, Delete | Have: Save, Rename, exports, Present, Refresh |
+| F5 | Text shrinks to fit an over-full box (60 % floor) | Have |
+
+PDF, PPTX and PNG use libraries bundled in this folder (`lib-*.js`, see `lib-NOTICE.md`), so exports work offline.
 
 ## Not copied on purpose
 Share, Permissions, comments, Start chat, presence avatars (all need the claude.ai service; the deck stays local).

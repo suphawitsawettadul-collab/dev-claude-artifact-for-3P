@@ -8,6 +8,7 @@ const free = () => b.ev(`document.querySelectorAll('#stage > .slide.active .ed-f
 const last = () => b.ev(`(() => { const e = [...document.querySelectorAll('#stage > .slide.active .ed-free')].at(-1); return JSON.stringify({ tag: e.tagName, shape: e.dataset.shape || '', radius: e.style.borderRadius, clip: e.style.clipPath, icon: e.dataset.icon || '' }); })()`).then(JSON.parse);
 const key = async (k, o = {}) => { await b.key(k, { code: o.shift ? 'Key' + k.toUpperCase() : 'Key' + k.toUpperCase(), shift: o.shift, vk: k.toUpperCase().charCodeAt(0) }); await b.sleep(80); };
 ok(await free() === 0, 'slide 2 has no inserted shapes');
+await b.click(30, 300); await L.esc(); // give the page keyboard focus
 await key('r'); let s = await last();
 ok(await free() === 1 && s.tag === 'DIV' && s.radius === '0px', 'R inserts a rectangle', JSON.stringify(s));
 await L.esc(); await key('r', { shift: true }); s = await last();

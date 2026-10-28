@@ -36,6 +36,6 @@ The server listens on localhost only. A deck links `editor.css`, an optional des
 
 ### Status
 
-Groups A (selection, move, context menu, undo) and B (floating toolbars, colour picker) are done and tested.
-Group C (properties panel, speaker notes under the slide) is work in progress and not tested yet.
-Groups E, D and F are still to do — see `design-slide/design-slide-gap.md`.
+All groups of the gap list (`design-slide/design-slide-gap.md`) are built and covered by tests, apart from the points that file marks
+as partly done (connector routes and snapping, magic-move transitions, build animations). `node design-slide/test/run-all.mjs` runs every
+check (about 4 minutes; needs Chrome, Chromium or Edge, and `unzip` outside Windows; set `BROWSER` to a browser path if none is found).
