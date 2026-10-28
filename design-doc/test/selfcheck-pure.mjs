@@ -1,0 +1,17 @@
+import { mdToSections, docHtml } from '../md2doc.mjs';
+import { ok, done } from './t-lib.mjs';
+const h = mdToSections('# Title\n\nHello **bold** and *it* and `code` [x](https://a.b) <script>\n\n- a\n  - b\n- c\n\n1. one\n2. two\n\n- [x] done\n- [ ] todo\n\n> quote\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n```\nif (a < b) {}\n```\n\n---\n\n[pending: risks]\n\n```chart\n{"type":"bar","title":"T","rows":[["a",1]]}\n```\n');
+ok(h.includes('<section data-tab="t1"') && h.includes('<h1>Title</h1>') && !h.includes('<h1>Tab 1</h1>'), 'single tab, own h1 kept');
+ok(h.includes('<b>bold</b>') && h.includes('<i>it</i>') && h.includes('<code>code</code>') && h.includes('<a href="https://a.b">x</a>'), 'inline marks');
+ok(h.includes('&lt;script&gt;') && !h.includes('<script>'), 'html in text is escaped');
+ok(h.includes('<ul><li>a<ul><li>b</li></ul></li><li>c</li></ul>'), 'nested bullets', h);
+ok(h.includes('<ol><li>one</li><li>two</li></ol>'), 'numbered list');
+ok(h.includes('<ul class="check"><li data-done="1">done</li><li>todo</li></ul>'), 'task list');
+ok(h.includes('<blockquote>quote</blockquote>') && h.includes('<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>'), 'quote and table');
+ok(h.includes('<pre>if (a &lt; b) {}</pre>') && h.includes('<hr>'), 'code fence and rule');
+ok(h.includes('<div class="pending" data-intent="risks"></div>') && h.includes(`<figure class="chart" data-chart='{"type":"bar","title":"T","rows":[["a",1]]}'></figure>`), 'pending and chart');
+const t = mdToSections('Intro\n\n<!-- tab: Plan -->\n## Step\n\n<!-- subtab: Detail -->\ntext\n\n<!-- tab: End -->\nbye');
+ok(/data-tab="t1" data-name="Tab 1" data-order="a00"/.test(t) && /data-name="Title"/.test(h) && /data-tab="t2" data-name="Plan" data-order="a01"/.test(t) && /data-tab="t3" data-name="Detail" data-order="a00" data-subtab-of="t2"/.test(t) && /data-tab="t4" data-name="End" data-order="a02"/.test(t), 'tabs, sub-tab and order', t.match(/<section[^>]*>/g).join('\n'));
+const d = docHtml({ title: 'A "q" <b>', md: 'x', ds: 'tu' });
+ok(d.includes('data-title="A &quot;q&quot; &lt;b&gt;"') && d.includes('<script src="ds-tu.js">') && d.includes('<script src="editor.js">'), 'doc shell');
+await done();
