@@ -327,9 +327,11 @@
   }
   function insertChip(kind, text, ref) {
     active.focus({ preventScroll: true }); hist.snap();
-    const attrs = `class="chip ${kind}" contenteditable="false" data-kind="${kind}"` + (ref ? ` data-ref="${esc(ref)}"` : '');
-    document.execCommand('insertHTML', false, `<span ${attrs}>${esc(text)}</span>&nbsp;`);
-    hist.snap(); markDirty();
+    const sel = getSelection(), chip = document.createElement('span'), gap = document.createTextNode('\u00a0');
+    chip.className = 'chip ' + kind; chip.contentEditable = 'false'; chip.dataset.kind = kind; if (ref) chip.dataset.ref = ref; chip.textContent = text;
+    if (!sel.rangeCount || !inActive(sel.anchorNode)) placeCaret(active.lastElementChild || active, 0, true);
+    const r = getSelection().getRangeAt(0); r.deleteContents(); r.insertNode(gap); r.insertNode(chip);
+    placeCaret(gap, 1); hist.snap(); markDirty();
   }
   function pickImage() { const f = $('#ed-file'); f.value = ''; f.onchange = () => f.files[0] && addImage(f.files[0]); f.click(); }
   function addImage(file) {
@@ -387,7 +389,7 @@
     if (e.key === ' ' && mdShortcut(e)) return;
     if (tableKey(e)) return;
     if (e.key === 'Tab' && curBlock()?.matches('ul,ol')) { e.preventDefault(); hist.snap(); document.execCommand(e.shiftKey ? 'outdent' : 'indent'); hist.snap(); markDirty(); return; }
-    if (e.key === 'Enter' && !e.shiftKey) { const b = curBlock(); if (b?.nodeName === 'PRE') { e.preventDefault(); document.execCommand('insertText', false, '\n'); } }
+    if (e.key === 'Enter' && !e.shiftKey) { const b = curBlock(); if (b?.nodeName === 'PRE') { e.preventDefault(); preNewline(); } }
     if ((e.key === 'Backspace' || e.key === 'Delete')) { const f = $('figure.sel', active); if (f) { e.preventDefault(); hist.snap(); f.remove(); hist.snap(); markDirty(); } }
   }, true);
   active_input();
@@ -406,9 +408,18 @@
     });
   }
 
+  function preNewline() { // execCommand would insert <br>; a code block keeps real newlines
+    hist.snap(); const r = getSelection().getRangeAt(0); r.deleteContents();
+    const nl = document.createTextNode('\n'); r.insertNode(nl);
+    let n = nl.nextSibling; while (n && n.nodeType === 3 && !n.length) { const x = n.nextSibling; n.remove(); n = x; }
+    if (!n || n.nodeName === 'BR') nl.after(document.createTextNode('\n')); // a lone trailing newline is not drawn, so keep a second one for the caret
+    placeCaret(nl, 1); hist.snap(); markDirty();
+  }
+  const preText = pre => { const c = pre.cloneNode(true); $$('br', c).forEach(x => x.replaceWith('\n')); return c.textContent; };
+
   // ---------- clicks: checklists, chips, figures, table menu ----------
   document.addEventListener('click', e => {
-    const t = e.target;
+    const t = e.target; if (!t.isConnected) return; // a menu item that was replaced by the next menu
     if (!pop.contains(t) && !t.closest('[data-menu],[data-cmd],#ed-tb')) { if (!pop.matches('.form') ) closePop(); }
     if (!inActive(t)) { $$('figure.sel', active || document).forEach(f => f.classList.remove('sel')); return; }
     const li = t.closest('ul.check > li');
@@ -692,7 +703,7 @@
       if (t === 'P') return inlineMd(b).trim();
       if (t === 'UL' || t === 'OL') return listMd(b);
       if (t === 'BLOCKQUOTE') return inlineMd(b).trim().split('\n').map(l => '> ' + l).join('\n');
-      if (t === 'PRE') return '```\n' + b.textContent.replace(/\n$/, '') + '\n```';
+      if (t === 'PRE') return '```\n' + preText(b).replace(/\n$/, '') + '\n```';
       if (t === 'HR') return '---';
       if (t === 'TABLE') { const rows = [...b.rows].map(r => '| ' + [...r.cells].map(c => inlineMd(c).trim().replace(/\|/g, '\\|')).join(' | ') + ' |'); const n = b.rows[0].cells.length; rows.splice(1, 0, '|' + ' --- |'.repeat(n)); return rows.join('\n'); }
       if (t === 'FIGURE' && b.classList.contains('chart')) { const d = parse(b, 'data-chart', {}); return (d.title ? `**${d.title}**\n\n` : '') + '| Label | Value |\n| --- | --- |\n' + (d.rows || []).map(r => `| ${r[0]} | ${r[1]} |`).join('\n'); }
@@ -703,7 +714,7 @@
     }).filter(Boolean).join('\n\n') + '\n';
   }
   function exportHtml(sec) {
-    const c = sec.cloneNode(true); c.removeAttribute('contenteditable'); c.className = 'doc-body'; renderFigures(c);
+    const c = sec.cloneNode(true); c.className = 'doc-body'; renderFigures(c); [c, ...$$('[contenteditable]', c)].forEach(n => n.removeAttribute('contenteditable'));
     return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(DOC.dataset.title || '')}</title>${(DS?.fonts || []).map(f => `<link rel="stylesheet" href="${f}">`).join('')}<style>body{max-width:760px;margin:40px auto;padding:0 24px;font:16px/1.65 "Segoe UI","Leelawadee UI",sans-serif;color:#1d2433}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd;padding:6px 10px}pre{background:#f1f1ef;padding:12px;border-radius:8px;overflow:auto}blockquote{border-left:4px solid #ccd;margin:1em 0;padding:0 1em}img,svg{max-width:100%;height:auto}ul.check{list-style:none;padding-left:0}ul.check>li::before{content:"☐ "}ul.check>li[data-done]::before{content:"☑ "}.chip{background:#e6edf7;border-radius:999px;padding:0 8px}.pending{border:1px dashed #99a;padding:8px;color:#667}.pending::before{content:attr(data-intent)}${DS?.css || ''}</style></head><body class="doc-body">${c.outerHTML.replace(/^<section[^>]*>|<\/section>$/g, '')}</body></html>`;
   }
   // --- minimal docx writer (stored zip) ---
@@ -757,7 +768,7 @@
       if (/^H[1-3]$/.test(t)) return para(runs(b), { style: 'Heading' + t[1], jc: jcOf(b) });
       if (t === 'P') return para(runs(b), { jc: jcOf(b) });
       if (t === 'BLOCKQUOTE') return para(runs(b, { i: 1 }), { ind: 720 });
-      if (t === 'PRE') return b.textContent.replace(/\n$/, '').split('\n').map(l => para(run(l, { code: 1 }), { shade: 1 })).join('');
+      if (t === 'PRE') return preText(b).replace(/\n$/, '').split('\n').map(l => para(run(l, { code: 1 }), { shade: 1 })).join('');
       if (t === 'HR') return para('', { border: 1 });
       if (t === 'UL' || t === 'OL') {
         let out = ''; let i = 0;

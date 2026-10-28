@@ -1,0 +1,31 @@
+import { start, ok, html, done, reset, enter } from './t-lib.mjs';
+import * as L from './t-lib.mjs';
+import fs from 'node:fs';
+const url = 'http://localhost:' + process.env.PORT + '/doc.html';
+await start(url);
+const b = L.b;
+await b.ev(`DocEditor.activate('t1')`); await reset(); await b.type('Saved text'); await enter(); await b.type('/chart'); await enter();
+await b.ev(`document.querySelector('#ed-title').value = 'Renamed doc'; document.querySelector('#ed-title').dispatchEvent(new Event('input', { bubbles: true }))`);
+ok(await b.ev(`document.querySelector('#ed-save').classList.contains('dirty')`), 'Save button highlights when unsaved');
+await b.key('s', { ctrl: true }); await b.sleep(500);
+const f = fs.readFileSync(process.env.DOC_DIR + '/doc.html', 'utf8');
+ok(f.includes('Saved text') && f.includes('data-title="Renamed doc"'), 'Ctrl+S writes text and title to the file');
+ok(!f.includes('data-chrome') && !f.includes('contenteditable="true"') && !f.includes('id="ed-root"') && !f.includes('class="doc-body"') && !/<section[^>]*class="active"/.test(f), 'saved file has no editor chrome');
+ok(!/<figure class="chart"[^>]*><svg/.test(f) && f.includes('data-chart='), 'charts are saved as data, not drawn svg');
+ok(!await b.ev('DocEditor.dirty') && fs.existsSync(process.env.DOC_DIR + '/doc.html.bak'), 'dirty flag cleared and .bak kept');
+await b.ev('location.reload()'); await b.sleep(1200);
+ok((await b.ev(`DocEditor.active.innerText`)).includes('Saved text'), 'reload shows the saved text');
+ok(await b.ev(`document.title`) === 'Design Doc: Renamed doc', 'title restored');
+// live reload: file rewritten on disk (what Claude does while filling the doc)
+const g = f.replace('Saved text', 'Written by Claude');
+await new Promise(r => setTimeout(r, 50)); fs.writeFileSync(process.env.DOC_DIR + '/doc.html', g);
+await b.sleep(3800);
+ok((await b.ev(`DocEditor.active.innerText`)).includes('Written by Claude'), 'editor shows a file change from disk');
+ok(await b.ev(`document.querySelector('#ed-status').textContent`) === 'Updated from file', 'status says so');
+// but unsaved edits are never overwritten
+await reset(); await b.type('My unsaved edit');
+fs.writeFileSync(process.env.DOC_DIR + '/doc.html', g.replace('Written by Claude', 'Other change'));
+await b.sleep(3800);
+ok((await b.ev(`DocEditor.active.innerText`)).includes('My unsaved edit'), 'unsaved edits are kept when the file changes');
+ok((await b.ev(`document.querySelector('#ed-status').textContent`)).startsWith('File changed on disk'), 'user is warned');
+await done();

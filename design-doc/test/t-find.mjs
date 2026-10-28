@@ -1,0 +1,15 @@
+import { start, ok, html, done, reset, enter } from './t-lib.mjs';
+import * as L from './t-lib.mjs';
+await start('http://localhost:' + process.env.PORT + '/doc.html');
+const b = L.b;
+await b.ev(`DocEditor.activate('t1'); DocEditor.active.innerHTML = '<p>cat dog cat</p><p>Cat bird</p>'`);
+await b.key('f', { ctrl: true }); await b.sleep(100);
+ok(await b.ev(`!document.querySelector('#ed-find').hidden`), 'Ctrl+F opens find');
+await b.type('cat'); await b.sleep(100);
+ok(await b.ev(`document.querySelector('#ed-fn').textContent`) === '3 found', 'counts matches, ignoring case');
+await b.ev(`document.querySelector('#ed-fr').value = 'fox'`);
+await b.ev(`document.querySelector('[data-cmd=freplall]').click()`); await b.sleep(150);
+ok((await html()) === '<p>fox dog fox</p><p>fox bird</p>', 'Replace all', await html());
+await b.ev(`document.querySelector('[data-cmd=fclose]').click()`);
+ok(await b.ev(`document.querySelector('#ed-find').hidden`), 'close hides the bar');
+await done();
