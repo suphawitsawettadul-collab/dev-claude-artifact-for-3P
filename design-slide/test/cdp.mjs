@@ -3,17 +3,19 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const BROWSERS = [process.env.BROWSER, 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', '/opt/pw-browsers/chromium', '/usr/bin/chromium', '/usr/bin/google-chrome'];
+const EDGE = BROWSERS.find(b => b && fs.existsSync(b));
+const extra = process.platform === 'win32' ? [] : ['--no-sandbox'];
 export async function launch(url, port = 9300 + Math.floor(Math.random() * 90), size = '1600,950') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'edge-'));
-  const p = spawn(EDGE, ['--headless=new', '--disable-gpu', '--no-first-run', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, `--window-size=${size}`, url], { stdio: 'ignore' });
+  const p = spawn(EDGE, ['--headless=new', '--disable-gpu', ...extra, '--no-first-run', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, `--window-size=${size}`, url], { stdio: 'ignore' });
   let tabs;
   for (let k = 0; k < 50; k++) { try { tabs = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); if (tabs.some(t => t.type === 'page' && t.url.startsWith('http'))) break; } catch {} await new Promise(r => setTimeout(r, 200)); }
   const tab = tabs.find(t => t.type === 'page' && t.url.startsWith('http'));
   const ws = new WebSocket(tab.webSocketDebuggerUrl);
   await new Promise(r => ws.addEventListener('open', r));
   let id = 0; const wait = new Map(); const logs = [];
-  ws.addEventListener('message', m => { const d = JSON.parse(m.data); if (d.id && wait.has(d.id)) { wait.get(d.id)(d); wait.delete(d.id); } else if (d.method === 'Runtime.exceptionThrown') logs.push('EXC ' + (d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text)); else if (d.method === 'Runtime.consoleAPICalled') logs.push(d.params.type + ' ' + d.params.args.map(a => a.value ?? a.description).join(' ')); });
+  ws.addEventListener('message', m => { const d = JSON.parse(m.data); if (d.id && wait.has(d.id)) { wait.get(d.id)(d); wait.delete(d.id); } else if (d.method === 'Page.javascriptDialogOpening') send('Page.handleJavaScriptDialog', { accept: true }); else if (d.method === 'Runtime.exceptionThrown') logs.push('EXC ' + (d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text)); else if (d.method === 'Runtime.consoleAPICalled') logs.push(d.params.type + ' ' + d.params.args.map(a => a.value ?? a.description).join(' ')); });
   const send = (method, params = {}) => new Promise(r => { const i = ++id; wait.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
   await send('Runtime.enable'); await send('Page.enable');
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -32,7 +34,7 @@ export async function launch(url, port = 9300 + Math.floor(Math.random() * 90), 
       await send('Input.dispatchKeyEvent', { type: 'keyUp', ...base }); await sleep(40);
     },
     async type(text) { for (const ch of text) { await send('Input.dispatchKeyEvent', { type: 'keyDown', key: ch, text: ch }); await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ch }); } await sleep(40); },
-    async close() { try { ws.close(); } catch {} try { spawn('taskkill', ['/PID', String(p.pid), '/T', '/F'], { stdio: 'ignore' }); } catch {} await sleep(300); try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} },
+    async close() { try { ws.close(); } catch {} try { if (process.platform === 'win32') spawn('taskkill', ['/PID', String(p.pid), '/T', '/F'], { stdio: 'ignore' }); else p.kill('SIGKILL'); } catch {} await sleep(300); try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} },
   };
   return api;
 }
