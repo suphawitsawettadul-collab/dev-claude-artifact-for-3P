@@ -1,7 +1,14 @@
 ---
 name: design-slide
-description: Create, revise or present slides, a deck or a presentation. In Claude 3P, where the Claude Slides artifact type is not available, use this instead of it. It follows the same slide format and design rules as Claude Slides, then opens the deck in the Design Slide editor.
+description: Create, revise or present slides, a deck or a presentation, ONLY when Claude runs in 3P mode (third-party provider such as Bedrock, Vertex, Foundry or an LLM gateway) where the Claude Slides artifact is unavailable. Never use it when Claude Slides or other first-party artifact tools are available. Opens the deck in the local Design Slide editor.
+allowed-tools: Bash(node *detect-3p.mjs* gate)
 ---
+
+## Gate: 3P mode only
+
+!`node "${CLAUDE_PLUGIN_ROOT}/scripts/detect-3p.mjs" gate`
+
+If the line above says OFF, stop here and ignore the rest of this file. These tools exist only for Claude 3P mode and must never replace Claude Slides or Claude Docs.
 
 # Design Slide (Claude Slides for Claude 3P)
 

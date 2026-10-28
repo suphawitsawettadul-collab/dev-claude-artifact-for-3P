@@ -1,0 +1,12 @@
+{
+  "name": "design-tools",
+  "description": "Design Slide and Design Doc for Claude 3P mode",
+  "owner": { "name": "Suphawit Sawettadul" },
+  "plugins": [
+    {
+      "name": "design-tools-3p",
+      "source": "./",
+      "description": "Local Slides and Docs editors that replace the Claude Slides/Docs artifacts in 3P mode only. Inert when 3P mode is off."
+    }
+  ]
+}

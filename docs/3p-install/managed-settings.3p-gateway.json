@@ -1,0 +1,14 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://llm-gateway.example.com/anthropic"
+  },
+  "extraKnownMarketplaces": {
+    "design-tools": {
+      "source": { "source": "github", "repo": "suphawitsawettadul-collab/dev-claude-artifact-for-3P" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "design-tools-3p@design-tools": true
+  }
+}
