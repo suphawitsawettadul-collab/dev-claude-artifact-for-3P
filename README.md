@@ -94,3 +94,9 @@ check (about 4 minutes; needs Chrome, Chromium or Edge, and `unzip` outside Wind
 ## Design Doc
 
 A local HTML document editor that stands in for Claude Docs in 3P mode: tabs, floating toolbar, `/` menu, tables, charts, diagrams, comment threads, version history and export to Word, PDF and Markdown. See `design-doc/README.md`; the skill is `skills/design-doc/`; tests: `node design-doc/test/run-all.mjs`.
+
+## Install as a Claude Code plugin (3P mode only)
+
+This repository is also a plugin marketplace. `claude plugin marketplace add suphawitsawettadul-collab/dev-claude-artifact-for-3P` then
+`claude plugin install design-tools-3p@design-tools`. The plugin is active only in 3P mode and stays out of the way of Claude Slides and
+Claude Docs otherwise. Default install via managed settings, how gating works and its limits: `docs/3p-install/README.md`. Tests: `node --test tests/gating.test.mjs`.

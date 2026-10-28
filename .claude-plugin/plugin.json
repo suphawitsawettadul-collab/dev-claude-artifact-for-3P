@@ -1,0 +1,15 @@
+{
+  "name": "design-tools-3p",
+  "displayName": "Design Tools for Claude 3P",
+  "version": "1.0.0",
+  "description": "Design Slide and Design Doc: local stand-ins for Claude Slides and Claude Docs, active only in Claude 3P mode (Bedrock, Vertex, Foundry or an LLM gateway).",
+  "license": "UNLICENSED",
+  "keywords": [
+    "3p",
+    "slides",
+    "docs"
+  ],
+  "author": {
+    "name": "Suphawit Sawettadul"
+  }
+}
