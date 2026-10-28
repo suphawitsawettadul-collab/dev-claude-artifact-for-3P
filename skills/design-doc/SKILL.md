@@ -1,7 +1,14 @@
 ---
 name: design-doc
-description: Create, revise or review a document (doc, report, proposal, memo, spec, notes) that the user will keep editing. In Claude 3P, where Claude Docs is not available, use this instead of it. Opens the doc in Design Doc, a local editor that works like Claude Docs.
+description: Create, revise or review a document (doc, report, proposal, memo, spec, notes) that the user will keep editing, ONLY when Claude runs in 3P mode (third-party provider such as Bedrock, Vertex, Foundry or an LLM gateway) where Claude Docs is unavailable. Never use it when Claude Docs or other first-party artifact tools are available. Opens the doc in the local Design Doc editor.
+allowed-tools: Bash(node *detect-3p.mjs* gate)
 ---
+
+## Gate: 3P mode only
+
+!`node "${CLAUDE_PLUGIN_ROOT}/scripts/detect-3p.mjs" gate`
+
+If the line above says OFF, stop here and ignore the rest of this file. These tools exist only for Claude 3P mode and must never replace Claude Slides or Claude Docs.
 
 # Design Doc (Claude Docs for Claude 3P)
 

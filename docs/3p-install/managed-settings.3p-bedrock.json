@@ -1,0 +1,15 @@
+{
+  "env": {
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "AWS_REGION": "us-east-1"
+  },
+  "extraKnownMarketplaces": {
+    "design-tools": {
+      "source": { "source": "github", "repo": "suphawitsawettadul-collab/dev-claude-artifact-for-3P" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "design-tools-3p@design-tools": true
+  }
+}
