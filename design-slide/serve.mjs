@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const deckDir = path.resolve(process.argv[2] || toolDir);
 const port = Number(process.env.PORT || 4190);
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg' };
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.woff2': 'font/woff2' };
 
 if (!fs.existsSync(deckDir) || !fs.statSync(deckDir).isDirectory()) { console.error('deck folder not found: ' + deckDir); process.exit(1); }
 
