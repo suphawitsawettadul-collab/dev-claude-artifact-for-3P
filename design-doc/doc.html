@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design Doc: ตัวอย่างเอกสาร</title>
+<link rel="stylesheet" href="editor.css">
+<script src="ds-tu.js"></script>
+</head>
+<body>
+<main id="doc" data-title="ตัวอย่างเอกสาร Design Doc" data-byline="Suphawit" data-date="2026-10-28">
+  <section data-tab="t1" data-name="ภาพรวม" data-order="a0">
+    <h1>ภาพรวมโครงการ</h1>
+    <p>Design Doc คือตัวแก้เอกสารสำหรับ Claude 3P mode ที่ทำงานเหมือน <b>Claude Docs</b> พิมพ์แก้ในที่ ใส่ความเห็น และส่งออกเป็น Word, PDF หรือ Markdown</p>
+    <h2>สิ่งที่ทำได้</h2>
+    <ul><li>หัวข้อ รายการ ตาราง โค้ด รูป กราฟ</li><li>เมนู <code>/</code> และ Markdown shortcut</li><li>คอมเมนต์เป็น thread และประวัติเวอร์ชัน</li></ul>
+    <h2>ตัวอย่างตาราง</h2>
+    <table><tr><th>งาน</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th></tr><tr><td>สเปก</td><td>Suphawit</td><td>เสร็จ</td></tr><tr><td>Editor</td><td>Claude</td><td>กำลังทำ</td></tr></table>
+    <figure class="chart" data-chart='{"type":"bar","title":"ชั่วโมงทำงานต่อสัปดาห์","rows":[["สัปดาห์ 1",12],["สัปดาห์ 2",18],["สัปดาห์ 3",9],["สัปดาห์ 4",21]]}'></figure>
+    <div class="pending" data-intent="สรุปความเสี่ยง — กำลังรวบรวมข้อมูล"></div>
+  </section>
+  <section data-tab="t2" data-name="แหล่งข้อมูล" data-order="a1" data-subtab-of="t1">
+    <h1>แหล่งข้อมูล</h1>
+    <ol><li>คู่มือ Claude Docs</li><li>Design Slide</li></ol>
+    <figure class="diagram" data-diagram='{"title":"ขั้นตอน","steps":["เขียนสเปก","สร้าง editor","ทดสอบ","ส่งมอบ"]}'></figure>
+  </section>
+</main>
+<script type="application/json" id="doc-data">{"comments":[],"revisions":[]}</script>
+<script src="editor.js"></script>
+</body></html>
