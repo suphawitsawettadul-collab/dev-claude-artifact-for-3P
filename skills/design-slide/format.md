@@ -12,8 +12,9 @@ Later children paint over earlier ones, so a full-bleed backdrop comes first.
 **Elements** (write in reading order): `<h1> <h2> <h3> <p>` (set `font-size`, none under 24px), `<ul>`/`<ol>` of plain `<li>`, `<br>`,
 inline `<b> <i> <u> <a href> <span style="color:…">`, `<div>` containers (flex row, column or grid; at most 15 deep),
 `<img src alt style="width;height;object-fit:cover|contain">`, `<table>` of `<tr>`/`<th>`/`<td>`, `<svg aria-label>` (no script),
-`<hr>`, `<x-shape kind="rect|rounded|ellipse|diamond|arrow-right|arrow-left|arrow-up|arrow-down|line" style="…">`.
-At most 200 elements per slide. In Design Slide, `x-icon` shows as a dot and `x-connector`, `x-embed` are dropped.
+`<hr>`, `<x-shape kind="rect|rounded|ellipse|diamond|arrow-right|arrow-left|arrow-up|arrow-down|line" style="…">`,
+`<x-icon name="check" style="width:96px;height:96px;color:#0f2a56">` (names in `design-slide/icons.js`: 30 icons such as check, star, user, mail, chart).
+At most 200 elements per slide. In Design Slide, `x-connector` and `x-embed` are dropped.
 
 **Speaker notes:** plain text in one `<aside>`, the section's last child.
 
