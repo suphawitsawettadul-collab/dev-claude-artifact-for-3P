@@ -25,7 +25,7 @@ await b.ev(`document.querySelector('#ed-ctx [data-ctx=paste]').click()`);
 ok(await n('.tu-title') === 2, 'paste adds a copy');
 const sels = await L.S(); ok(sels.length === 1, 'pasted copy selected', JSON.stringify(sels));
 const pl = await b.ev(`(() => { const e = DeckEditor.selection[0].el; return [e.style.position, parseFloat(e.style.left), parseFloat(e.style.top), e.parentElement.classList.contains('slide'), e.style.fontSize].join('|'); })()`);
-ok(pl.startsWith('absolute|' + (l0 + 24)), 'pasted copy pinned +24px', pl + ' vs ' + l0);
+ok(pl.startsWith('absolute|') && Math.abs(parseFloat(pl.split('|')[1]) - (l0 + 24)) < 0.05, 'pasted copy pinned +24px', pl + ' vs ' + l0);
 // Duplicate Ctrl+D
 await b.key('d', { ctrl: true });
 ok(await n('.tu-title') === 3, 'Ctrl+D duplicates the element');

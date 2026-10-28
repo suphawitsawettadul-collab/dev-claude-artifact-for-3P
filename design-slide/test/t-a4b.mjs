@@ -30,7 +30,8 @@ await b.drag(gx, gy, gx + 50, gy + 30);
 const t2 = await rect('.slide.active .tu-title');
 ok(near(t2[0] - t1[0], 50) && near(t2[1] - t1[1], 30), 'group moves with its children', JSON.stringify([t1, t2]));
 // double-click text in group edits it
-await b.click(gx + 50, gy + 30, { clickCount: 2 });
+const sb = await rect('.slide.active .tu-sub'); // near the top left of the text, clear of boxes that overlap its lower part on other fonts
+await b.click(sb[0] + 24, sb[1] + 3, { clickCount: 2 });
 ok(await b.ev(`document.activeElement.className`) === 'tu-sub', 'dblclick edits a text inside a group', await b.ev(`document.activeElement.className`));
 await L.esc(); await L.esc();
 // ungroup
@@ -63,6 +64,7 @@ await b.key('z', { ctrl: true });
 ok(!(await b.ev(`document.querySelector('.slide.active .ed-free')?.style.background || ''`)).includes('247'), 'undo colour', await b.ev(`document.querySelector('.slide.active .ed-free')?.style.background`));
 // slide add / delete undo
 const sc = await b.ev(`document.querySelectorAll('#stage > .slide').length`);
+await b.ev(`document.querySelector('#ed-add [data-menu]').click()`); // the gallery is built when the menu opens
 await b.ev(`document.querySelector('[data-add=content]').click()`);
 ok(await b.ev(`document.querySelectorAll('#stage > .slide').length`) === sc + 1, 'slide added');
 await b.key('z', { ctrl: true });

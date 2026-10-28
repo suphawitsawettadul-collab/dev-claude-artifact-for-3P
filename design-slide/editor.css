@@ -207,3 +207,31 @@ body.presenting .slide { box-shadow: none; cursor: pointer; }
 .cp-in { display: grid; grid-template-columns: 1fr 64px auto; gap: 6px; align-items: center; } .cp-in input { margin: 0; } .cp-g { display: none; margin-bottom: 8px; }
 .cp-st button { border: 1px solid transparent !important; } .ed-icons { background: none; margin: 0; }
 body.presenting #ed-tb, body.presenting #ed-pop, body.view-grid #ed-tb, body.view-grid #ed-pop { display: none !important; }
+
+/* E: new-slide gallery, skipped / picked slides, section rows in the grid */
+.ed-menu .items.gal { width: 540px; padding: 8px; }
+.gal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: 60vh; overflow: auto; }
+.ed-menu .items .gcard { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 6px; height: auto !important; padding: 6px !important; }
+.gprev { position: relative; overflow: hidden; border: 1px solid var(--line, #444); border-radius: 4px; background: #fff; flex: none; }
+.gprev > .slide { display: flex; position: absolute; left: 0; top: 0; margin: 0; box-shadow: none; pointer-events: none; }
+.ed-thumb.skip > .slide { opacity: .4; }
+.ed-thumb.skip::after { content: 'Skipped'; position: absolute; right: 6px; bottom: 6px; padding: 2px 6px; border-radius: 4px; background: #2b2b2b; color: #fff; font-size: 11px; }
+.ed-thumb.picked { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ed-sechead { grid-column: 1 / -1; padding: 10px 2px 0; font-weight: 600; color: var(--muted, #aaa); }
+
+/* D: connector head, icon picker */
+[data-shape=connector] { position: absolute; }
+[data-shape=connector][data-head=end]::after { content: ''; position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  border-top: var(--hs, 9px) solid transparent; border-bottom: var(--hs, 9px) solid transparent; border-left: calc(var(--hs, 9px) * 1.8) solid currentColor; }
+.ed-menu .items.icons { width: 300px; padding: 8px; }
+.icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-height: 50vh; overflow: auto; }
+.ed-menu .items.icons button { width: auto; height: 40px; padding: 0; justify-content: center; align-items: center; }
+
+/* F: transitions while presenting, rename field */
+@keyframes tr-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tr-push { from { transform: translateX(10%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes tr-push-back { from { transform: translateX(-10%); opacity: 0; } to { transform: none; opacity: 1; } }
+body.presenting .slide.active[data-transition=fade] { animation: tr-fade .5s ease; }
+body.presenting .slide.active[data-transition=push] { animation: tr-push .45s ease; }
+body.presenting.back .slide.active[data-transition=push] { animation-name: tr-push-back; }
+.ed-rename { font: inherit; font-size: 15px; height: 30px; width: 260px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--accent); background: var(--bg); color: var(--ink); }

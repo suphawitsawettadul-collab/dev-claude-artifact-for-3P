@@ -23,18 +23,19 @@ Tool: `BI Expert Agent/tooling/design-slide/`. Run: `node "BI Expert Agent/tooli
 
 ## Where / Done / Next
 
-- Where: job folder set up; PoC files copied into `tooling/design-slide/`; nothing built yet.
-- Done: job folder and README, PoC moved (byte copies), ticket and job pages, launch config `design-slide`.
-- Next: Group A (selection and undo).
+- Where: groups A to F built and tested; the Claude 3P skill (`skills/design-slide/`) and `open-deck.mjs` open Claude Slides format decks in the editor.
+- Done: job set up, groups A, B, C, E, D, F, skill and bridge, offline export libraries, 30 test suites in `design-slide/test/`.
+- Next: KB page and judge; later: connector routes and snapping, magic-move transitions, builds.
 
 ## Checklist
 
 - [x] job set up and PoC moved
-- [ ] Group A: selection and undo
-- [ ] Group B: floating toolbars
-- [ ] Group C: properties panel
-- [ ] Group E: slides and filmstrip
-- [ ] Group D: insert and connector
-- [ ] Group F: zoom, present, export
+- [x] Group A: selection and undo
+- [x] Group B: floating toolbars
+- [x] Group C: properties panel
+- [x] Group E: slides and filmstrip
+- [x] Group D: insert and connector (connector routes and snapping still open)
+- [x] Group F: zoom, present, export (magic move and builds still open)
+- [x] Claude 3P skill and open-deck bridge
 - [ ] KB page
 - [ ] judge

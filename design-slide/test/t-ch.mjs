@@ -10,6 +10,7 @@ export const title = () => L.b.ev(`document.getElementById('pp-title').textConte
 export const openPanel = async () => { if (!(await L.b.ev('DeckEditor.panelOpen'))) await L.clickOn('#ed-pp'); await L.b.sleep(120); };
 // real click into a number / text field, then real key presses
 export const pnum = async (id, v) => {
+  await L.b.ev(`document.querySelector(${J(P(id))}).scrollIntoView({ block: 'center' })`); await L.b.sleep(30);
   await L.clickOn(P(id));
   await L.b.ev(`document.querySelector(${J(P(id))}).select()`);
   await L.b.type(String(v));
@@ -17,8 +18,8 @@ export const pnum = async (id, v) => {
 };
 // the native drop-down list cannot be driven headless: set the value and fire change, as picking an option does
 export const psel = async (id, v) => { await L.b.ev(`(() => { const s = document.querySelector(${J(P(id))}); s.value = ${J(v)}; s.dispatchEvent(new Event('change', { bubbles: true })); })()`); await L.b.sleep(60); };
-export const pseg = (id, v) => L.clickOn(`${P(id)} [data-v="${v}"]`);
-export const pclick = sel => L.clickOn('#pp-body ' + sel);
+export const pseg = async (id, v) => { await L.b.ev(`document.querySelector(${J(P(id) + ` [data-v="${v}"]`)}).scrollIntoView({ block: 'center' })`); await L.b.sleep(30); await L.clickOn(`${P(id)} [data-v="${v}"]`); };
+export const pclick = async sel => { await L.b.ev(`document.querySelector(${J('#pp-body ' + sel)}).scrollIntoView({ block: 'center' })`); await L.b.sleep(30); await L.clickOn('#pp-body ' + sel); };
 export const popOpen = () => L.b.ev(`getComputedStyle(document.getElementById('ed-pop')).display !== 'none'`);
 export const popPick = async c => { await L.b.ev(`document.querySelector('#ed-pop [data-c="${c}"]').scrollIntoView({ block: 'center' })`); await L.b.sleep(40); await L.clickOn(`#ed-pop [data-c="${c}"]`); };
 export const undo = async () => { await L.b.ev('document.activeElement.blur()'); await L.b.key('z', { ctrl: true }); await L.b.sleep(80); };
