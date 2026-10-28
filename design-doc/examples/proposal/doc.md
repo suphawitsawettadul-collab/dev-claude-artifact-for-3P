@@ -1,26 +1,26 @@
-# ข้อเสนอ: ระบบรายงานยอดขายรายสัปดาห์
+# Proposal: Weekly sales reporting system
 
-ข้อเสนอนี้สรุปสิ่งที่ทีมจะทำใน 4 สัปดาห์ เพื่อให้ผู้บริหารเห็นยอดขายล่าสุดทุกเช้าวันจันทร์
+This proposal summarises what the team will do in 4 weeks so executives see the latest sales every Monday morning.
 
-## เป้าหมาย
+## Goals
 
-- ลดเวลาจัดทำรายงานจาก 6 ชั่วโมง เหลือไม่เกิน 1 ชั่วโมง
-- ทุกตัวเลขตรวจย้อนไปถึงแหล่งข้อมูลได้
+- Cut report preparation time from 6 hours to at most 1 hour
+- Every figure can be traced back to its source
 
-## แผนงาน
+## Plan
 
 ```diagram
-{"title":"4 สัปดาห์","steps":["รวบรวมข้อมูล","สร้างแบบจำลอง","ทดสอบ","ส่งมอบ"]}
+{"title":"4 weeks","steps":["Collect data","Build model","Test","Deliver"]}
 ```
 
-| สัปดาห์ | งานหลัก | ผู้รับผิดชอบ |
+| Week | Main task | Owner |
 | --- | --- | --- |
-| 1 | เชื่อมแหล่งข้อมูล | [ชื่อ] |
-| 2 | สร้างแดชบอร์ด | [ชื่อ] |
+| 1 | Connect data sources | [Name] |
+| 2 | Build dashboard | [Name] |
 
-## งบประมาณ
+## Budget
 
-[pending: งบประมาณรวมและแหล่งที่มาของตัวเลข]
+[pending: Total budget and where the figures come from]
 
-<!-- tab: แหล่งข้อมูล -->
-1. ไฟล์ยอดขายรายสัปดาห์ [ระบุที่เก็บไฟล์]
+<!-- tab: Sources -->
+1. Weekly sales file [state where it is stored]

@@ -1641,7 +1641,7 @@
   const clear = c => !c || c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c);
   const hex = c => (c.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(n => Math.round(+n).toString(16).padStart(2, '0')).join('').toUpperCase();
   const alpha = c => { const m = c.match(/rgba\([^)]*,\s*([\d.]+)\)/); return m ? Math.round((1 - +m[1]) * 100) : 0; };
-  const THAI = /[฀-๿]/;
+  const THAI = /[\u0E00-\u0E7F]/;
   const fontMap = DS?.pptxFonts || {};
   const face = (cs, text) => {
     if (THAI.test(text)) return 'Leelawadee UI';

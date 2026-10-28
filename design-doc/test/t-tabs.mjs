@@ -3,9 +3,9 @@ import * as L from './t-lib.mjs';
 await start('http://localhost:' + process.env.PORT + '/doc.html');
 const b = L.b;
 const names = () => b.ev(`JSON.stringify([...document.querySelectorAll('#ed-tray .ed-tab')].map(r => (r.classList.contains('sub') ? '-' : '') + r.querySelector('.nm').textContent))`).then(JSON.parse);
-ok(JSON.stringify(await names()) === '["ภาพรวม","-แหล่งข้อมูล"]', 'tray shows tabs, sub-tab indented', JSON.stringify(await names()));
+ok(JSON.stringify(await names()) === '["Overview","-Sources"]', 'tray shows tabs, sub-tab indented', JSON.stringify(await names()));
 await clickOn('.ed-tab.sub .nm');
-ok(await b.ev(`DocEditor.active.dataset.tab`) === 't2' && (await html()).includes('แหล่งข้อมูล'), 'clicking a tab opens it');
+ok(await b.ev(`DocEditor.active.dataset.tab`) === 't2' && (await html()).includes('Sources'), 'clicking a tab opens it');
 ok(await b.ev('location.hash') === '#t2', 'hash follows the tab');
 // add tab
 await clickOn('#ed-tray > .ed-btn');
@@ -20,9 +20,9 @@ await b.ev(`document.querySelector('#ed-pop input').value = 'Notes'`); await b.k
 ok((await names()).at(-1) === 'Notes', 'rename works', JSON.stringify(await names()));
 // move up / down
 await menuOn(2); await pick('Move up');
-ok(JSON.stringify(await names()) === '["Notes","ภาพรวม","-แหล่งข้อมูล"]', 'Move up swaps with the tab above', JSON.stringify(await names()));
+ok(JSON.stringify(await names()) === '["Notes","Overview","-Sources"]', 'Move up swaps with the tab above', JSON.stringify(await names()));
 await menuOn(0); await pick('Move down');
-ok(JSON.stringify(await names()) === '["ภาพรวม","-แหล่งข้อมูล","Notes"]', 'Move down puts it back', JSON.stringify(await names()));
+ok(JSON.stringify(await names()) === '["Overview","-Sources","Notes"]', 'Move down puts it back', JSON.stringify(await names()));
 // nest under previous then un-nest
 await b.ev(`DocEditor.activate('t1')`);
 const ids = await b.ev(`JSON.stringify(DocEditor.tabs())`);

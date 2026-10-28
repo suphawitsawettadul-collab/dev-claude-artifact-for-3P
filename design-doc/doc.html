@@ -1,27 +1,27 @@
 <!doctype html>
-<html lang="th"><head>
+<html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Design Doc: ตัวอย่างเอกสาร</title>
+<title>Design Doc: Sample document</title>
 <link rel="stylesheet" href="editor.css">
 <script src="ds-tu.js"></script>
 </head>
 <body>
-<main id="doc" data-title="ตัวอย่างเอกสาร Design Doc" data-byline="Suphawit" data-date="2026-10-28">
-  <section data-tab="t1" data-name="ภาพรวม" data-order="a0">
-    <h1>ภาพรวมโครงการ</h1>
-    <p>Design Doc คือตัวแก้เอกสารสำหรับ Claude 3P mode ที่ทำงานเหมือน <b>Claude Docs</b> พิมพ์แก้ในที่ ใส่ความเห็น และส่งออกเป็น Word, PDF หรือ Markdown</p>
-    <h2>สิ่งที่ทำได้</h2>
-    <ul><li>หัวข้อ รายการ ตาราง โค้ด รูป กราฟ</li><li>เมนู <code>/</code> และ Markdown shortcut</li><li>คอมเมนต์เป็น thread และประวัติเวอร์ชัน</li></ul>
-    <h2>ตัวอย่างตาราง</h2>
-    <table><tr><th>งาน</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th></tr><tr><td>สเปก</td><td>Suphawit</td><td>เสร็จ</td></tr><tr><td>Editor</td><td>Claude</td><td>กำลังทำ</td></tr></table>
-    <figure class="chart" data-chart='{"type":"bar","title":"ชั่วโมงทำงานต่อสัปดาห์","rows":[["สัปดาห์ 1",12],["สัปดาห์ 2",18],["สัปดาห์ 3",9],["สัปดาห์ 4",21]]}'></figure>
-    <div class="pending" data-intent="สรุปความเสี่ยง — กำลังรวบรวมข้อมูล"></div>
+<main id="doc" data-title="Design Doc sample document" data-byline="Suphawit" data-date="2026-10-28">
+  <section data-tab="t1" data-name="Overview" data-order="a0">
+    <h1>Project overview</h1>
+    <p>Design Doc isa document editor for Claude 3P mode that works like <b>Claude Docs</b> Edit in place, add comments, and export to Word, PDF or Markdown</p>
+    <h2>What it can do</h2>
+    <ul><li>Headings, lists, tables, code, images, charts</li><li>The <code>/</code> menu and Markdown shortcuts</li><li>Threaded comments and version history</li></ul>
+    <h2>Example table</h2>
+    <table><tr><th>Task</th><th>Owner</th><th>Status</th></tr><tr><td>Spec</td><td>Suphawit</td><td>Done</td></tr><tr><td>Editor</td><td>Claude</td><td>In progress</td></tr></table>
+    <figure class="chart" data-chart='{"type":"bar","title":"Work hours per week","rows":[["Week 1",12],["Week 2",18],["Week 3",9],["Week 4",21]]}'></figure>
+    <div class="pending" data-intent="Risk summary - still collecting data"></div>
   </section>
-  <section data-tab="t2" data-name="แหล่งข้อมูล" data-order="a1" data-subtab-of="t1">
-    <h1>แหล่งข้อมูล</h1>
-    <ol><li>คู่มือ Claude Docs</li><li>Design Slide</li></ol>
-    <figure class="diagram" data-diagram='{"title":"ขั้นตอน","steps":["เขียนสเปก","สร้าง editor","ทดสอบ","ส่งมอบ"]}'></figure>
+  <section data-tab="t2" data-name="Sources" data-order="a1" data-subtab-of="t1">
+    <h1>Sources</h1>
+    <ol><li>Claude Docs guide</li><li>Design Slide</li></ol>
+    <figure class="diagram" data-diagram='{"title":"Steps","steps":["Write spec","Build editor","Test","Deliver"]}'></figure>
   </section>
 </main>
 <script type="application/json" id="doc-data">{"comments":[],"revisions":[]}</script>
