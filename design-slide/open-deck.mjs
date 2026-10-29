@@ -5,14 +5,17 @@
 //   --rebuild    rebuild deck.html from the slide files, overwriting edits made in the editor (without it an existing
 //                deck.html is kept, because the editor saves into it)
 //   --no-serve   only build deck.html
+//   --static     no local server: copy the editor into <deckRoot>/_ds and open deck.html straight from disk (file://). This is also
+//                the automatic fallback when the machine blocks listening on a port. Saving then uses the browser's save dialog.
 //   --stop       stop the server this script started for <deckRoot>
-// Prints "OPEN: http://localhost:<port>/deck.html" when the editor is ready.
+// Prints "OPEN: http://localhost:<port>/deck.html" (or "OPEN: file:///.../deck.html" without a server) when the editor is ready.
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import vm from 'node:vm';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { canListen, prepareStatic } from '../scripts/static-open.mjs';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -109,16 +112,16 @@ function build() {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(deck.title || 'Untitled deck')}</title>
-<link rel="stylesheet" href="editor.css">
+<link rel="stylesheet" href="_ds/editor.css">
 ${faces}
-${ds ? `<script src="ds-${esc(ds)}.js"></script>` : '<style>.slide { width: 1920px; height: 1080px; }</style>'}
+${ds ? `<script src="_ds/ds-${esc(ds)}.js"></script>` : '<style>.slide { width: 1920px; height: 1080px; }</style>'}
 <style>.slide h1, .slide h2, .slide h3, .slide p, .slide ul, .slide ol { margin: 0; } .slide ul, .slide ol { padding-left: 1.2em; }</style>
 </head>
 <body>
 <div id="stage">
 ${slides.join('\n')}
 </div>
-<script src="editor.js"></script>
+<script src="_ds/editor.js"></script>
 </body></html>
 `;
   fs.writeFileSync(path.join(root, 'deck.html'), html);
@@ -140,6 +143,14 @@ if (flag('rebuild') || !fs.existsSync(deckFile)) { const n = build(); console.lo
 else console.log('kept the existing deck.html (edits made in the editor are saved there); use --rebuild to rebuild it from project/slides');
 if (flag('no-serve')) process.exit(0);
 
+const openStatic = why => {
+  if (why) console.log('NOTE: ' + why);
+  console.log('OPEN: ' + prepareStatic({ root, toolDir, htmlName: 'deck.html', withAssets: true }) + '  (no server: Save opens the browser save dialog, exports are downloaded)');
+  process.exit(0);
+};
+if (flag('static') || process.env.DESIGN_TOOLS_STATIC) openStatic();
+if (!await canListen()) openStatic('this machine does not allow listening on a local port, so the deck opens straight from disk');
+
 let info = fs.existsSync(pidFile) ? JSON.parse(fs.readFileSync(pidFile, 'utf8')) : null;
 if (info && alive(info.pid) && await ping(info.port) === 200) { console.log(`OPEN: http://localhost:${info.port}/deck.html  (server already running)`); process.exit(0); }
 let port = Number(opt('port') || 4190);
@@ -148,5 +159,5 @@ const child = spawn(process.execPath, [path.join(toolDir, 'serve.mjs'), root], {
 child.unref();
 fs.writeFileSync(pidFile, JSON.stringify({ pid: child.pid, port }));
 for (let k = 0; k < 30 && await ping(port) !== 200; k++) await new Promise(r => setTimeout(r, 150));
-if (await ping(port) !== 200) { console.error('the server did not start'); process.exit(1); }
+if (await ping(port) !== 200) openStatic('the local server did not start (blocked by policy or a firewall?), so the deck opens straight from disk');
 console.log(`OPEN: http://localhost:${port}/deck.html`);

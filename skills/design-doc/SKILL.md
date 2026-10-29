@@ -35,6 +35,8 @@ shared; the doc stays on the user's computer. Do not publish it as an artifact.
    - Images are not supported from Markdown; the user adds them in the editor.
 3. Open it: `node <tool>/open-doc.mjs <root> --ds tu` (Thai Union look, the default for Thai Union work; leave `--ds` out for plain),
    plus `--byline "<user name>"` if known. It builds `<root>/doc.html`, starts the local server, prints `OPEN: http://localhost:<port>/doc.html`.
+   If the machine blocks local servers it prints `OPEN: file:///.../doc.html` instead (add `--static` to choose that up front);
+   give the user that file to open in Edge / Chrome and tell them Ctrl+S asks where to save the first time and exports are downloads.
 4. Show it in the browser pane of the Claude desktop app (built-in browser or `preview_start`); if there is none, give the user the link.
    Tell them what they can do: type in place, select text for the toolbar, `/` for blocks, comment (💬), Ctrl+S saves, History, Export.
    Do not describe the mechanism. Do not screenshot or re-check unless asked.

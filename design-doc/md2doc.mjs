@@ -72,14 +72,14 @@ export function docHtml({ title, byline = '', date = '', md, ds }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Design Doc: ${esc(title)}</title>
-<link rel="stylesheet" href="editor.css">
-${ds ? `<script src="ds-${ds}.js"></script>\n` : ''}</head>
+<link rel="stylesheet" href="_ds/editor.css">
+${ds ? `<script src="_ds/ds-${ds}.js"></script>\n` : ''}</head>
 <body>
 <main id="doc" data-title="${attr(title)}"${byline ? ` data-byline="${attr(byline)}"` : ''}${date ? ` data-date="${attr(date)}"` : ''}>
 ${mdToSections(md)}
 </main>
 <script type="application/json" id="doc-data">{"comments":[],"revisions":[]}</script>
-<script src="editor.js"></script>
+<script src="_ds/editor.js"></script>
 </body></html>
 `;
 }

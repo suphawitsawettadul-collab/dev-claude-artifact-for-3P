@@ -649,13 +649,23 @@
     return '<!doctype html>\n' + html.outerHTML;
   }
   const slug = () => ((DOC.dataset.title || 'document').replace(/[\\/:*?"<>|\0]+/g, '').trim() || 'document');
+  // Writes through the local server when there is one. Without it (doc opened from disk, or the server is blocked) the doc is
+  // written through the browser's save dialog (File System Access API, asked once per session); other files are downloaded.
+  let fileHandle = null;
   async function putFile(name, body, type) {
-    try { const r = await fetch('/save?file=' + encodeURIComponent(name), { method: 'POST', body }); if (r.ok) return true; } catch {}
+    if (/^https?:$/.test(location.protocol)) { try { const r = await fetch('/save?file=' + encodeURIComponent(name), { method: 'POST', body }); if (r.ok) return true; } catch {} }
+    if (name === FILE && window.showSaveFilePicker) {
+      try {
+        fileHandle ||= await window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'Web page', accept: { 'text/html': ['.html'] } }] });
+        const w = await fileHandle.createWritable(); await w.write(new Blob([body], { type })); await w.close(); return true;
+      } catch (e) { fileHandle = null; if (e?.name === 'AbortError') return null; }
+    }
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return false;
   }
   async function save() {
     addRevision();
     const ok = await putFile(FILE, serialize(), 'text/html');
+    if (ok === null) { status('Save cancelled'); return; }
     dirty = false; $('#ed-save').classList.remove('dirty');
     status((ok ? 'Saved ' : 'Downloaded ') + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
     lastStamp = await stamp(); refreshSide();

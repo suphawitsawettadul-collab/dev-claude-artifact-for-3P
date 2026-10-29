@@ -10,8 +10,8 @@ export async function launch(url, port = 9300 + Math.floor(Math.random() * 90), 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'edge-'));
   const p = spawn(EDGE, ['--headless=new', '--disable-gpu', ...extra, '--no-first-run', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, `--window-size=${size}`, url], { stdio: 'ignore' });
   let tabs;
-  for (let k = 0; k < 50; k++) { try { tabs = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); if (tabs.some(t => t.type === 'page' && t.url.startsWith('http'))) break; } catch {} await new Promise(r => setTimeout(r, 200)); }
-  const tab = tabs.find(t => t.type === 'page' && t.url.startsWith('http'));
+  for (let k = 0; k < 50; k++) { try { tabs = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); if (tabs.some(t => t.type === 'page' && /^(https?|file):/.test(t.url))) break; } catch {} await new Promise(r => setTimeout(r, 200)); }
+  const tab = tabs.find(t => t.type === 'page' && /^(https?|file):/.test(t.url));
   const ws = new WebSocket(tab.webSocketDebuggerUrl);
   await new Promise(r => ws.addEventListener('open', r));
   let id = 0; const wait = new Map(); const logs = [];

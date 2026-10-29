@@ -4,14 +4,17 @@
 //   --md        Markdown source (default <docRoot>/doc.md when doc.html does not exist yet); see md2doc.mjs for tabs, charts, diagrams
 //   --ds tu     load the Thai Union design system (default for Thai Union work)
 //   --rebuild   rebuild doc.html from the Markdown, overwriting edits made in the editor (without it an existing doc.html is kept)
+//   --static    no local server: copy the editor into <docRoot>/_ds and open doc.html straight from disk (file://). Also the automatic
+//               fallback when the machine blocks listening on a port. Saving then uses the browser's save dialog.
 //   --stop      stop the server this script started for <docRoot>
-// Prints "OPEN: http://localhost:<port>/doc.html" when the editor is ready.
+// Prints "OPEN: http://localhost:<port>/doc.html" (or "OPEN: file:///.../doc.html" without a server) when the editor is ready.
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { docHtml } from './md2doc.mjs';
+import { canListen, prepareStatic } from '../scripts/static-open.mjs';
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -39,6 +42,14 @@ if (fs.existsSync(mdFile) && (!fs.existsSync(docFile) || flag('rebuild'))) {
 } else if (!fs.existsSync(docFile)) { console.error(`no doc.html or Markdown under ${root} (give --md file.md)`); process.exit(1); }
 if (flag('no-serve')) process.exit(0);
 
+const openStatic = why => {
+  if (why) console.log('NOTE: ' + why);
+  console.log('OPEN: ' + prepareStatic({ root, toolDir, htmlName: 'doc.html', withAssets: false }) + '  (no server: Save opens the browser save dialog, exports are downloaded)');
+  process.exit(0);
+};
+if (flag('static') || process.env.DESIGN_TOOLS_STATIC) openStatic();
+if (!await canListen()) openStatic('this machine does not allow listening on a local port, so the doc opens straight from disk');
+
 let info = fs.existsSync(pidFile) ? JSON.parse(fs.readFileSync(pidFile, 'utf8')) : null;
 if (info && alive(info.pid) && await ping(info.port) === 200) { console.log(`OPEN: http://localhost:${info.port}/doc.html  (server already running)`); process.exit(0); }
 let port = Number(opt('port') || 4191);
@@ -47,4 +58,5 @@ const child = spawn(process.execPath, [path.join(toolDir, 'serve.mjs'), root], {
 child.unref();
 fs.writeFileSync(pidFile, JSON.stringify({ pid: child.pid, port }));
 for (let k = 0; k < 40 && await ping(port) !== 200; k++) await new Promise(r => setTimeout(r, 150));
+if (await ping(port) !== 200) openStatic('the local server did not start (blocked by policy or a firewall?), so the doc opens straight from disk');
 console.log(`OPEN: http://localhost:${port}/doc.html`);

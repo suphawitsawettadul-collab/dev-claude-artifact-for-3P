@@ -4,11 +4,13 @@
 // Optional design system: a deck that loads a ds-*.js before this file (window.DECK_DS) gets its css, fonts, layouts and colours.
 // The deck file holds only its slides; everything this script adds is marked data-chrome and stripped on save.
 (() => {
-  const LIBS = { // bundled in this folder (see lib-NOTICE.md), so exports work offline
-    html2canvas: 'lib-html2canvas.js',
-    jspdf: 'lib-jspdf.js',
-    pptx: 'lib-pptxgen.js',
+  const RT = (document.currentScript?.src || '').replace(/[^/]*$/, ''); // folder this script was loaded from (a deck opened from disk keeps it in _ds/)
+  const LIBS = { // bundled next to this script (see lib-NOTICE.md), so exports work offline
+    html2canvas: RT + 'lib-html2canvas.js',
+    jspdf: RT + 'lib-jspdf.js',
+    pptx: RT + 'lib-pptxgen.js',
   };
+  const ASSETS = window.DECK_ASSETS || {}; // images of a deck opened from disk, as data URIs (a browser will not read pixels of file:// images)
   const DS = window.DECK_DS || null;
   const BASIC_COLORS = { Black: '#1d2433', Grey: '#6b7280', Light: '#f3f4f6', Blue: '#0057a8', Sky: '#4a90e2', Green: '#1e8e5a', Orange: '#f59e0b', Red: '#c0392b', White: '#ffffff' };
   const COLORS = DS?.colors || BASIC_COLORS;
@@ -48,6 +50,7 @@
   const [W, H] = DS ? [DS.width, DS.height] : sizeOf(slides()[0]);
   const PX = W / 13.333, PT = 960 / W; // css px per inch / per point on a 13.333 x 7.5 in slide
   const U = W / 1280; // default sizes are written for a 1280-wide slide
+  document.head.insertAdjacentHTML('beforeend', `<style data-chrome>@page{size:${W}px ${H}px;margin:0}</style>`); // print: one page per slide
   const file = decodeURIComponent(location.pathname.split('/').pop()) || 'deck.html';
   const base = file.replace(/\.html$/i, '');
   let i = Math.min(Math.max(parseInt(location.hash.slice(1)) - 1 || 0, 0), slides().length - 1);
@@ -1569,9 +1572,35 @@
   }
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && presenting()) present(false); });
 
+  // Writes through the local server when there is one. Without it (deck opened from disk, or the server is blocked) the deck
+  // is written through the browser's save dialog (File System Access API, asked once per session) and exports are downloaded.
+  let fileHandle = null;
+  const hasServer = () => /^https?:$/.test(location.protocol);
   async function post(name, body) {
-    const r = await fetch('/save?file=' + encodeURIComponent(name), { method: 'POST', body });
-    if (!r.ok) throw new Error(await r.text());
+    if (hasServer()) {
+      try {
+        const r = await fetch('/save?file=' + encodeURIComponent(name), { method: 'POST', body });
+        if (!r.ok) throw new Error(await r.text());
+        return 'saved';
+      } catch (e) { if (!(e instanceof TypeError)) throw e; } // TypeError = the server cannot be reached: fall through
+    }
+    if (name === file) {
+      const blob = body instanceof Blob ? body : new Blob([body], { type: 'text/html' });
+      if (window.showSaveFilePicker) {
+        try {
+          fileHandle ||= await window.showSaveFilePicker({ suggestedName: file, types: [{ description: 'Web page', accept: { 'text/html': ['.html'] } }] });
+          const w = await fileHandle.createWritable(); await w.write(blob); await w.close();
+          return 'saved';
+        } catch (e) { fileHandle = null; if (e?.name === 'AbortError') throw new Error('Save cancelled'); }
+      }
+      downloadBlob(blob, file);
+      return 'downloaded';
+    }
+    return 'exported'; // exports are downloaded by the caller
+  }
+  function downloadBlob(blob, name) {
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
 
   async function save() {
@@ -1586,8 +1615,8 @@
     doc.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
     doc.querySelectorAll('.slide').forEach(el => { el.style.removeProperty('zoom'); el.classList.remove('active'); if (!el.getAttribute('style')) el.removeAttribute('style'); });
     try {
-      await post(file, '<!doctype html>\n' + doc.outerHTML);
-      dirty = false; $('ed-save').classList.remove('dirty'); status('Saved ' + new Date().toLocaleTimeString());
+      const how = await post(file, '<!doctype html>\n' + doc.outerHTML);
+      dirty = false; $('ed-save').classList.remove('dirty'); status((how === 'downloaded' ? 'Downloaded ' + file + ' ' : 'Saved ') + new Date().toLocaleTimeString());
     } catch (e) { status('Save failed: ' + e.message); }
   }
 
@@ -1615,6 +1644,7 @@
         const c = cleanClone(s);
         c.classList.add('active');
         c.style.margin = '0'; c.style.boxShadow = 'none';
+        for (const im of c.querySelectorAll('img')) { const a = asset(im.currentSrc || im.src); if (a) im.src = a; }
         host.replaceChildren(c);
         await Promise.all([...c.querySelectorAll('img')].map(im => im.decode().catch(() => {})));
         await fn(c, k);
@@ -1650,7 +1680,8 @@
   };
   const pt = px => Math.round(parseFloat(px) * PT * 10) / 10;
   const isBlock = el => /^(block|flex|grid|list-item|table)/.test(getComputedStyle(el).display);
-  const dataUrl = src => fetch(src).then(r => r.blob()).then(b => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }));
+  const asset = src => { const k = Object.keys(ASSETS).find(k => src === k || src.endsWith('/' + k)); return k && ASSETS[k]; };
+  const dataUrl = src => asset(src) ? Promise.resolve(asset(src)) : fetch(src).then(r => r.blob()).then(b => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }));
 
   // PPTX helpers for what the panel writes: opacity, border style, shadow, rotation, letter spacing, case, strike.
   const DASH = { dashed: 'dash', dotted: 'sysDot' };
@@ -1846,9 +1877,7 @@ document.addEventListener('click',e=>show(i+(e.clientX<innerWidth/4?-1:1)));addE
       const blob = fmt === 'pdf' ? await toPdf() : fmt === 'html' ? await toHtml() : fmt === 'png' ? await toPng() : await toPptx();
       const name = fmt === 'html' ? `${base}-web.html` : fmt === 'png' ? `${base}-slide-${i + 1}.png` : `${base}.${fmt}`;
       await post(name, blob);
-      // Also offer a browser download where the host allows it.
-      const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
-      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      downloadBlob(blob, name); // also offered as a browser download
       status(`Exported ${name}`);
     } catch (e) { console.error(e); status('Export failed: ' + (e?.message || e)); }
     finally { $('ed-dl').disabled = false; }
