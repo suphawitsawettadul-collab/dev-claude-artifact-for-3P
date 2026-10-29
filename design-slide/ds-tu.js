@@ -1,6 +1,7 @@
 // Design system: Thai_Union_Slide_Template_01.
 // A deck opts in with <script src="ds-tu.js"></script> before editor.js. The editor injects css + fonts on load,
 // offers the layouts on "+", the colours in the colour menu, and maps web fonts to PowerPoint fonts on export.
+const BG = (document.currentScript?.getAttribute('src') || '').replace(/[^/]*$/, ''); // folder of this file as the deck names it ('' or '_ds/'), so the backgrounds follow it
 window.DECK_DS = {
   name: 'Thai Union 01',
   width: 1920, height: 1080,
@@ -65,11 +66,11 @@ window.DECK_DS = {
   `,
   layouts: {
     cover: { name: 'Cover', html: `
-      <img class="tu-bg" src="tu-bg-cover.png" alt="">
+      <img class="tu-bg" src="${BG}tu-bg-cover.png" alt="">
       <div class="tu-cover-title"><h1 data-edit>Presentation title</h1><p data-edit>Subtitle</p></div>
       <div class="tu-cover-date" data-edit>1 January 2026</div>` },
     agenda: { name: 'Agenda', html: `
-      <img class="tu-bg" src="tu-bg-agenda.png" alt="">
+      <img class="tu-bg" src="${BG}tu-bg-agenda.png" alt="">
       <div class="tu-agenda-h" data-edit>Agenda</div>
       <div class="tu-agenda-list">
         <div class="tu-agenda-item"><b>01</b><div><h3 data-edit>First topic</h3><p data-edit>Short line</p></div></div>
@@ -77,13 +78,13 @@ window.DECK_DS = {
         <div class="tu-agenda-item"><b>03</b><div><h3 data-edit>Third topic</h3><p data-edit>Short line</p></div></div>
       </div>` },
     content: { name: 'Content', html: `
-      <img class="tu-bg" src="tu-bg-content.png" alt="">
+      <img class="tu-bg" src="${BG}tu-bg-content.png" alt="">
       <div class="tu-title" data-edit>Slide title</div>
       <div class="tu-sub" data-edit>Subtitle</div>
       <div class="tu-body"><ul data-edit><li>First point</li><li>Second point</li><li>Third point</li></ul></div>
       <div class="tu-page" data-page-number></div>` },
     numbers: { name: 'Big numbers', html: `
-      <img class="tu-bg" src="tu-bg-content.png" alt="">
+      <img class="tu-bg" src="${BG}tu-bg-content.png" alt="">
       <div class="tu-title" data-edit>Key numbers</div>
       <div class="tu-sub" data-edit>Subtitle</div>
       <div class="tu-cards">
@@ -93,7 +94,7 @@ window.DECK_DS = {
       </div>
       <div class="tu-page" data-page-number></div>` },
     table: { name: 'Table', html: `
-      <img class="tu-bg" src="tu-bg-content.png" alt="">
+      <img class="tu-bg" src="${BG}tu-bg-content.png" alt="">
       <div class="tu-title" data-edit>Status</div>
       <div class="tu-sub" data-edit>Subtitle</div>
       <table class="tu-table">
@@ -104,11 +105,11 @@ window.DECK_DS = {
       </table>
       <div class="tu-page" data-page-number></div>` },
     section: { name: 'Section', html: `
-      <img class="tu-bg" src="tu-bg-section.png" alt="">
+      <img class="tu-bg" src="${BG}tu-bg-section.png" alt="">
       <div class="tu-sec-num" data-edit>01</div>
       <div class="tu-sec-title" data-edit>Section title</div>` },
     closing: { name: 'Closing', html: `
-      <img class="tu-bg" src="tu-bg-closing.png" alt="">
+      <img class="tu-bg" src="${BG}tu-bg-closing.png" alt="">
       <div class="tu-close" data-edit>Thank You</div>` },
   },
 };

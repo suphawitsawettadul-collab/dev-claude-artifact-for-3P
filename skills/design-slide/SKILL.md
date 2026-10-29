@@ -36,6 +36,8 @@ folder in `$DESIGN_SLIDE_DIR`). Node 20 or newer is needed. Do not publish the d
    - Images are files next to the deck (`<img src="logo.png">` with the file in `<root>`), never `data:` or remote URLs.
 4. Open it: `node <tool>/open-deck.mjs <root>` (add `--ds tu` for the Thai Union design system, `--port N` to choose a port).
    It builds `<root>/deck.html`, starts the local server and prints `OPEN: http://localhost:<port>/deck.html`.
+   If the machine blocks local servers it prints `OPEN: file:///.../deck.html` instead (add `--static` to choose that up front);
+   give the user that file to open in Edge / Chrome and tell them Ctrl+S asks where to save the first time and exports are downloads.
 5. Show it: open that address in the browser pane of the Claude desktop app (built-in browser or `preview_start`); if there
    is none, give the user the link. Tell them what they can do there (click text to edit, drag to move, Ctrl+S saves,
    download icon exports PDF or PowerPoint, F5 presents) and which placeholders need filling. Do not describe the mechanism.

@@ -34,6 +34,16 @@ node design-doc/open-doc.mjs design-doc/examples/proposal --ds tu --byline "Your
 
 Each command prints `OPEN: http://localhost:...`; open that address in the Claude desktop browser pane (or any browser).
 
+**No local server (locked-down company PCs).** Some machines stop `node` from listening on a port (endpoint security, firewall,
+policy). Then `open-deck.mjs` / `open-doc.mjs` fall back by themselves, or you can force it with `--static` (or set
+`DESIGN_TOOLS_STATIC=1`): the editor is copied to `<root>/_ds/` and the command prints `OPEN: file:///.../deck.html`. Open that
+file in Edge or Chrome. Everything works without a server, with two differences: Ctrl+S opens the browser's save dialog the first
+time (pick the same `deck.html` / `doc.html` and confirm the overwrite; later saves are silent), and exports (PDF, PPTX, PNG,
+Word, ...) arrive as normal browser downloads. Firefox has no save dialog API, so there Ctrl+S downloads the file instead.
+
+**Printing.** Ctrl+P in Design Slide prints every slide (except skipped ones) on its own page at the slide's size, without the
+editor around it; pick "Save as PDF" and turn on "Background graphics" if the browser does not do it by itself.
+
 ## Use in Claude 3P
 
 Copy `skills/design-slide/` and `skills/design-doc/` to `~/.claude/skills/`, and set `DESIGN_SLIDE_DIR` / `DESIGN_DOC_DIR` to the full path of

@@ -13,5 +13,5 @@ ok(h.includes('<div class="pending" data-intent="risks"></div>') && h.includes(`
 const t = mdToSections('Intro\n\n<!-- tab: Plan -->\n## Step\n\n<!-- subtab: Detail -->\ntext\n\n<!-- tab: End -->\nbye');
 ok(/data-tab="t1" data-name="Tab 1" data-order="a00"/.test(t) && /data-name="Title"/.test(h) && /data-tab="t2" data-name="Plan" data-order="a01"/.test(t) && /data-tab="t3" data-name="Detail" data-order="a00" data-subtab-of="t2"/.test(t) && /data-tab="t4" data-name="End" data-order="a02"/.test(t), 'tabs, sub-tab and order', t.match(/<section[^>]*>/g).join('\n'));
 const d = docHtml({ title: 'A "q" <b>', md: 'x', ds: 'tu' });
-ok(d.includes('data-title="A &quot;q&quot; &lt;b&gt;"') && d.includes('<script src="ds-tu.js">') && d.includes('<script src="editor.js">'), 'doc shell');
+ok(d.includes('data-title="A &quot;q&quot; &lt;b&gt;"') && d.includes('<script src="_ds/ds-tu.js">') && d.includes('<script src="_ds/editor.js">'), 'doc shell');
 await done();

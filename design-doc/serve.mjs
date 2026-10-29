@@ -1,5 +1,5 @@
 // Tiny local server for editable HTML docs. Usage: node serve.mjs [docDir]
-// Files are looked up in docDir first, then in this folder (editor.js, editor.css, ds-*.js), so a doc can live anywhere.
+// Files (and _ds/<file>) are looked up in docDir first, then in this folder (editor.js, editor.css, ds-*.js), so a doc can live anywhere.
 // POST /save?file=x.html|pdf|docx|md writes into docDir (default: this folder). GET /stamp?file=x.html gives its mtime (live reload).
 import http from 'node:http';
 import fs from 'node:fs';
@@ -39,8 +39,9 @@ http.createServer((req, res) => {
   }
   let name;
   try { name = decodeURIComponent(url.pathname.slice(1)) || 'doc.html'; } catch { res.writeHead(400); return res.end('bad url'); }
-  if (!plain(name)) { res.writeHead(400); return res.end('bad file'); }
-  const file = [docDir, toolDir].map(d => path.join(d, name)).find(isFile);
+  const own = name.startsWith('_ds/'); // runtime files of a deck that may also be opened from disk: _ds/<name> is served from the tool folder first (so an updated tool wins over a copy made for file:// use)
+  if (!plain(own ? name.slice(4) : name)) { res.writeHead(400); return res.end('bad file'); }
+  const file = (own ? [path.join(toolDir, name.slice(4)), path.join(docDir, name)] : [docDir, toolDir].map(d => path.join(d, name))).find(isFile);
   if (!file) { res.writeHead(404); return res.end('not found'); }
   res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
   fs.createReadStream(file).pipe(res);

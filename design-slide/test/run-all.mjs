@@ -13,7 +13,7 @@ const env = { ...process.env, PORT: '4196', DECK_DIR: deck };
 const srv = spawn(process.execPath, [path.join(tool, 'serve.mjs'), deck], { env, stdio: 'ignore' });
 await new Promise(r => setTimeout(r, 800));
 let bad = 0;
-for (const t of ['selfcheck-pure', 'selfcheck-server', 't-a1', 't-a1b', 't-a3', 't-a3b', 't-a4', 't-a4b', 't-a5', 't-cell', 't-img', 't-misc', 't-b1', 't-b1s', 't-b1f', 't-b2', 't-b2s', 't-b3', 't-b4', 't-b4g', 't-b4n', 't-bx', 't-c1', 't-c2', 't-open', 't-e1', 't-d1', 't-f1']) {
+for (const t of ['selfcheck-pure', 'selfcheck-server', 't-a1', 't-a1b', 't-a3', 't-a3b', 't-a4', 't-a4b', 't-a5', 't-cell', 't-img', 't-misc', 't-b1', 't-b1s', 't-b1f', 't-b2', 't-b2s', 't-b3', 't-b4', 't-b4g', 't-b4n', 't-bx', 't-c1', 't-c2', 't-open', 't-static', 't-print', 't-e1', 't-d1', 't-f1']) {
   const r = spawnSync(process.execPath, [path.join(here, t + '.mjs')], { env, encoding: 'utf8' });
   const out = (r.stdout + r.stderr).trim().split(String.fromCharCode(10));
   const fails = out.filter(l => l.startsWith('FAIL'));

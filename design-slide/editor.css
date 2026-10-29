@@ -235,3 +235,15 @@ body.presenting .slide.active[data-transition=fade] { animation: tr-fade .5s eas
 body.presenting .slide.active[data-transition=push] { animation: tr-push .45s ease; }
 body.presenting.back .slide.active[data-transition=push] { animation-name: tr-push-back; }
 .ed-rename { font: inherit; font-size: 15px; height: 30px; width: 260px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--accent); background: var(--bg); color: var(--ink); }
+
+/* print (Ctrl+P / Save as PDF): every slide on its own page at its own size, none of the editor chrome. The @page size is set by editor.js. */
+@media print {
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  [data-chrome], .ed-sel, aside.notes { display: none !important; }
+  #stage { position: static !important; display: block !important; overflow: visible !important; padding: 0 !important; visibility: visible !important; }
+  .slide, .slide.active { display: flex !important; flex-direction: column; position: relative !important; margin: 0 !important; zoom: 1 !important; transform: none !important;
+                          box-shadow: none !important; break-after: page; page-break-after: always; break-inside: avoid; }
+  .slide:last-of-type { break-after: auto; page-break-after: auto; }
+  .slide[data-skip] { display: none !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
