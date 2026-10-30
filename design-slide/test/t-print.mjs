@@ -23,7 +23,7 @@ const url = /OPEN: (file:\/\/\S+)/.exec(r.stdout)?.[1];
 const b = await start(url + '#1');
 try {
   // topmost element at points of the overlaps, relative to the slide, on screen and in print
-  const pts = [[350, 250], [500, 350], [650, 450], [650, 600], [900, 700], [150, 150]];
+  const pts = [[350, 250], [500, 350], [650, 450], [650, 650], [900, 700], [150, 150]];
   const top = () => b.ev(`(() => { const s = document.querySelector('#stage > .slide'), r = s.getBoundingClientRect(), z = r.width / s.offsetWidth;
     return ${JSON.stringify(pts)}.map(([x, y]) => { const e = document.elementsFromPoint(r.left + x * z, r.top + y * z).find(e => e.parentElement === s && !e.matches('[data-chrome]')); return e ? e.id || e.dataset.shape : '-'; }); })()`);
   const screen = await top();
